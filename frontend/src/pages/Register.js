@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Button, TextField, Typography, Paper } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axiosInstance from '../utils/axios';
 
 function Register() {
   const navigate = useNavigate();
@@ -23,10 +23,13 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:8080/api/auth/register", formData);
-      navigate("/login");
+      console.log('Attempting registration:', formData);
+      const response = await axiosInstance.post('/api/auth/register', formData);
+      console.log('Registration successful:', response.data);
+      navigate('/login');
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.response?.data || "An error occurred";
+      console.error('Registration failed:', err);
+      const errorMessage = err.response?.data?.message || err.response?.data || "Registration failed";
       setError(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : errorMessage);
     }
   };

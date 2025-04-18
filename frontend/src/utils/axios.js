@@ -12,7 +12,7 @@ const axiosInstance = axios.create({
 
 // Update request interceptor
 axiosInstance.interceptors.request.use(
-  (config) => {
+  async (config) => {
     try {
       const user = JSON.parse(localStorage.getItem("user"));
       
@@ -41,27 +41,21 @@ axiosInstance.interceptors.request.use(
       return config;
     }
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(new Error(error.message))
 );
 
 // Update response interceptor with better error handling
 axiosInstance.interceptors.response.use(
   (response) => {
     if (response.config.responseType === 'blob') {
-      // Check if the blob is an error response
-      if (response.data.type === 'application/json') {
-        return response.data.text().then(text => {
-          const error = JSON.parse(text);
-          return Promise.reject(error);
-        });
-      }
-      // Create object URL for media
-      const blobUrl = URL.createObjectURL(response.data);
-      response.data = blobUrl;
+      // Don't transform blob responses
+      return response;
     }
     return response;
   },
   (error) => {
+    // Convert to proper Error object
+    const errorMessage = error.response?.data?.message || error.message || 'Network error';
     if (error.code === "ERR_NETWORK") {
       console.error("Network Error - Backend may be down:", error);
       // Add retry logic for media requests
@@ -80,7 +74,7 @@ axiosInstance.interceptors.response.use(
       localStorage.removeItem("user");
       window.location.href = "/login";
     }
-    return Promise.reject(error);
+    return Promise.reject(new Error(errorMessage));
   }
 );
 

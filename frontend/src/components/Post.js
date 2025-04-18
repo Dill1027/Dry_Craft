@@ -10,6 +10,8 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
   const [deleting, setDeleting] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [mediaUrls, setMediaUrls] = useState({});
+  const [error, setError] = useState(null);
+  const [videoError, setVideoError] = useState(false);
   const user = JSON.parse(localStorage.getItem("user"));
 
   const formatDate = (dateString) => {
@@ -24,55 +26,117 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
   };
 
   // Fetch media as a blob and create object URL
-  const getMediaUrl = async (mediaId, originalUrl) => {
+  const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
     try {
       const response = await axiosInstance.get(`/api/media/${mediaId}`, {
         responseType: "blob",
+        timeout: 30000,
+        validateStatus: (status) => status === 200,
+        headers: {
+          'Accept': 'image/*, video/*',
+          'Cache-Control': 'no-cache'
+        }
       });
-      if (response.data instanceof Blob) {
-        return URL.createObjectURL(response.data);
+
+      // Get content type from response headers
+      const contentType = response.headers['content-type'];
+      if (!contentType || !contentType.match(/^(image|video)\//)) {
+        throw new Error(`Invalid content type: ${contentType}`);
       }
-      console.warn(`Invalid blob for media ${mediaId}, using fallback URL`);
-      return getFullUrl(originalUrl);
+
+      // Get and validate blob
+      const blob = response.data;
+      if (!(blob instanceof Blob) || blob.size === 0) {
+        throw new Error(`Invalid blob response: size=${blob?.size}`);
+      }
+
+      // Create and verify blob URL
+      const blobUrl = URL.createObjectURL(new Blob([blob], { type: contentType }));
+      if (!blobUrl) {
+        throw new Error('Failed to create blob URL');
+      }
+
+      console.log(`Successfully loaded media ${mediaId}: ${contentType}, ${blob.size} bytes`);
+      return blobUrl;
+
     } catch (error) {
       console.error(`Error loading media ${mediaId}:`, error);
-      return getFullUrl(originalUrl); // Fallback to original URL
+      
+      // Only retry for recoverable errors
+      const isRecoverable = 
+        error.code === 'ECONNABORTED' ||
+        error.response?.status >= 500 ||
+        error.message.includes('Invalid blob') ||
+        error.message.includes('Failed to create blob');
+
+      if (retryCount < 3 && isRecoverable) {
+        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+        console.log(`Retrying media load for ${mediaId}, attempt ${retryCount + 1} after ${delay}ms`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return getMediaUrl(mediaId, originalUrl, retryCount + 1);
+      }
+
+      // Return fallback URL after retries exhausted
+      return getFullUrl(originalUrl);
+    }
+  };
+
+  // Update image error handling
+  const handleImageError = (url) => {
+    console.error("Image failed to load:", url);
+    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIEZhaWxlZCB0byBMb2FkPC90ZXh0Pjwvc3ZnPg==";
+  };
+
+  const loadMedia = async () => {
+    try {
+      setVideoError(false); // Reset video error state
+      const newMediaUrls = {};
+
+      // Load video first if exists
+      if (post.videoUrl) {
+        const mediaId = post.videoUrl.split("/").pop();
+        const videoUrl = await getMediaUrl(mediaId, post.videoUrl);
+        if (videoUrl) {
+          newMediaUrls.video = videoUrl;
+        }
+      }
+
+      // Load images in parallel
+      if (post.imageUrls?.length) {
+        const imagePromises = post.imageUrls.map(async (url) => {
+          const mediaId = url.split("/").pop();
+          const mediaUrl = await getMediaUrl(mediaId, url);
+          if (mediaUrl) {
+            newMediaUrls[mediaId] = mediaUrl;
+          }
+        });
+
+        await Promise.all(imagePromises);
+      }
+
+      setMediaUrls(newMediaUrls);
+    } catch (error) {
+      console.error('Error loading media:', error);
+      setVideoError(true);
     }
   };
 
   // Load all media URLs
   useEffect(() => {
-    const newMediaUrls = {};
-    const loadMedia = async () => {
+    let isMounted = true;
+    const abortController = new AbortController();
+    
+    if (isMounted) {
+      loadMedia();
+    }
 
-      // Handle video
-      if (post.videoUrl) {
-        const mediaId = post.videoUrl.split("/").pop();
-        newMediaUrls.video = await getMediaUrl(mediaId, post.videoUrl);
-      }
-
-      // Handle images
-      if (post.imageUrls?.length) {
-        const imagePromises = post.imageUrls.map(async (url) => {
-          const mediaId = url.split("/").pop();
-          const mediaUrl = await getMediaUrl(mediaId, url);
-          return { mediaId, mediaUrl };
-        });
-        const resolvedImages = await Promise.all(imagePromises);
-        resolvedImages.forEach(({ mediaId, mediaUrl }) => {
-          newMediaUrls[mediaId] = mediaUrl;
-        });
-      }
-
-      setMediaUrls(newMediaUrls);
-    };
-
-    loadMedia();
-
-    // Cleanup object URLs
     return () => {
-      Object.values(newMediaUrls).forEach((url) => {
-        if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+      isMounted = false;
+      abortController.abort();
+      Object.values(mediaUrls).forEach((url) => {
+        if (url?.startsWith('blob:')) {
+          URL.revokeObjectURL(url);
+        }
       });
     };
   }, [post.videoUrl, post.imageUrls]);
@@ -87,7 +151,8 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
       setShowMenu(false);
     } catch (error) {
       console.error("Error deleting post:", error);
-      alert("Failed to delete post. Please try again.");
+      setError("Failed to delete post");
+      setTimeout(() => setError(null), 3000); // Clear error after 3s
     } finally {
       setDeleting(false);
     }
@@ -130,7 +195,8 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
       editPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
     } catch (error) {
       console.error("Error updating post:", error);
-      alert(error.response?.data || "Failed to update post. Please try again.");
+      setError(error.response?.data || "Failed to update post");
+      setTimeout(() => setError(null), 3000); // Clear error after 3s
     } finally {
       setUpdating(false);
     }
@@ -138,6 +204,11 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
 
   return (
     <div className="bg-white rounded-lg shadow-md mb-4 p-4 relative">
+      {error && (
+        <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-2">
+          {error}
+        </div>
+      )}
       {user && user.id === post.userId && (
         <div className="absolute top-4 right-4">
           <button
@@ -269,17 +340,32 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
 
           {post.videoUrl && (
             <div className="mb-4">
-              <video
-                src={mediaUrls.video || getFullUrl(post.videoUrl)}
-                className="max-h-96 w-full object-contain"
-                controls
-                playsInline
-                preload="metadata"
-                onError={(e) => {
-                  console.error("Video loading error:", e);
-                  e.target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPlZpZGVvIEZhaWxlZCB0byBMb2FkPC90ZXh0Pjwvc3ZnPg==";
-                }}
-              />
+              {videoError ? (
+                <div className="bg-gray-100 p-4 rounded-lg text-center">
+                  <p className="text-gray-600">Video failed to load</p>
+                  <button 
+                    onClick={() => {
+                      setVideoError(false);
+                      loadMedia();
+                    }}
+                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <video
+                  src={mediaUrls.video || getFullUrl(post.videoUrl)}
+                  className="max-h-96 w-full object-contain"
+                  controls
+                  playsInline
+                  preload="metadata"
+                  onError={(e) => {
+                    console.error("Video loading error:", e);
+                    setVideoError(true);
+                  }}
+                />
+              )}
             </div>
           )}
 
@@ -292,8 +378,7 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
                 alt={`Post image ${index + 1}`}
                 className="max-h-96 object-contain mb-4 w-full"
                 onError={(e) => {
-                  console.error("Image failed to load:", url);
-                  e.target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIEZhaWxlZCB0byBMb2FkPC90ZXh0Pjwvc3ZnPg==";
+                  e.target.src = handleImageError(url);
                 }}
               />
             );

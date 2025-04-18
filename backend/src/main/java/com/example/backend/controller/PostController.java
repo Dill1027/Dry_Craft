@@ -1,11 +1,12 @@
 package com.example.backend.controller;
 
 import java.io.ByteArrayOutputStream;
+import java.time.Duration;
 import java.util.List;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.CacheControl;
@@ -38,40 +39,37 @@ public class PostController {
     private final PostService postService;
     private final GridFSBucket gridFSBucket;
 
-    @Autowired
     public PostController(PostService postService, GridFSBucket gridFSBucket) {
         this.postService = postService;
         this.gridFSBucket = gridFSBucket;
     }
 
     @PostMapping("/posts")
-    public ResponseEntity<?> createPost(
+    public ResponseEntity<PostResponse> createPost(
             @RequestParam("userId") String userId,
             @RequestParam("content") String content,
             @RequestParam(value = "images", required = false) List<MultipartFile> images,
             @RequestParam(value = "video", required = false) MultipartFile video) {
         try {
             if (userId == null || userId.isEmpty()) {
-                return ResponseEntity.badRequest().body("User ID is required");
+                return ResponseEntity.badRequest().build();
             }
 
-            logger.info("Creating post for user: " + userId);
+            logger.log(Level.INFO, "Creating post for user: {0}", userId);
             if (video != null) {
-                logger.info("Video included: " + video.getOriginalFilename() +
-                        ", size: " + video.getSize() +
-                        ", contentType: " + video.getContentType());
+                logger.log(Level.INFO, "Video included: {0}, size: {1}, type: {2}", 
+                    new Object[]{video.getOriginalFilename(), video.getSize(), video.getContentType()});
             }
 
             PostResponse post = postService.createPost(userId, content, images, video);
-            logger.info("Post created successfully with ID: " + post.getId());
+            logger.log(Level.INFO, "Post created successfully with ID: {0}", post.getId());
             return ResponseEntity.ok(post);
         } catch (IllegalArgumentException e) {
-            logger.warning("Invalid request data: " + e.getMessage());
-            return ResponseEntity.badRequest().body(e.getMessage());
+            logger.log(Level.WARNING, "Invalid request data: {0}", e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            logger.severe("Error creating post: " + e.getMessage());
-            e.printStackTrace(); // Log full stack trace
-            return ResponseEntity.badRequest().body("Failed to create post: " + e.getMessage());
+            logger.log(Level.SEVERE, "Error creating post", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -86,19 +84,19 @@ public class PostController {
     }
 
     @DeleteMapping("/posts/{postId}")
-    public ResponseEntity<?> deletePost(
+    public ResponseEntity<Void> deletePost(
             @PathVariable String postId,
             @RequestParam String userId) {
         try {
             postService.deletePost(postId, userId);
             return ResponseEntity.ok().build();
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 
     @PutMapping("/posts/{postId}")
-    public ResponseEntity<?> updatePost(
+    public ResponseEntity<PostResponse> updatePost(
             @PathVariable String postId,
             @RequestParam String userId,
             @RequestParam String content,
@@ -107,18 +105,17 @@ public class PostController {
             PostResponse post = postService.updatePost(postId, userId, content, images);
             return ResponseEntity.ok(post);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ResponseEntity.badRequest().build();
         }
     }
 
     @GetMapping("/media/{mediaId}")
     public ResponseEntity<Resource> getMedia(@PathVariable String mediaId) {
         try {
-            logger.info("Fetching media with ID: " + mediaId);
+            logger.log(Level.INFO, "Fetching media with ID: {0}", mediaId);
             
-            // Validate ObjectId format
             if (!ObjectId.isValid(mediaId)) {
-                logger.warning("Invalid media ID format: " + mediaId);
+                logger.log(Level.WARNING, "Invalid media ID format: {0}", mediaId);
                 return ResponseEntity.badRequest().build();
             }
             
@@ -126,84 +123,76 @@ public class PostController {
             GridFSFile file = gridFSBucket.find(new org.bson.Document("_id", objectId)).first();
             
             if (file == null) {
-                logger.warning("Media not found with ID: " + mediaId);
+                logger.log(Level.WARNING, "Media not found with ID: {0}", mediaId);
                 return ResponseEntity.notFound().build();
             }
 
-            try (GridFSDownloadStream downloadStream = gridFSBucket.openDownloadStream(objectId);
-                 ByteArrayOutputStream outputStream = new ByteArrayOutputStream()) {
-                
+            String contentType = determineContentType(file.getFilename(), file.getMetadata());
+            long contentLength = file.getLength();
+
+            if (contentLength == 0) {
+                logger.log(Level.WARNING, "Empty media file: {0}", mediaId);
+                return ResponseEntity.noContent().build();
+            }
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream((int) contentLength);
+            try (GridFSDownloadStream downloadStream = gridFSBucket.openDownloadStream(objectId)) {
                 byte[] buffer = new byte[8192];
                 int bytesRead;
                 while ((bytesRead = downloadStream.read(buffer)) != -1) {
                     outputStream.write(buffer, 0, bytesRead);
                 }
-                byte[] data = outputStream.toByteArray();
-
-                String contentType = determineContentType(file.getFilename(), file.getMetadata());
-                
-                HttpHeaders headers = new HttpHeaders();
-                headers.setContentType(MediaType.parseMediaType(contentType));
-                headers.setContentLength(data.length);
-                headers.setCacheControl(CacheControl.noCache().getHeaderValue());
-                headers.setPragma("no-cache");
-                headers.setExpires(0L);
-                headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
-                
-                return ResponseEntity
-                    .status(HttpStatus.OK)
-                    .headers(headers)
-                    .body(new ByteArrayResource(data));
             }
-        } catch (IllegalArgumentException e) {
-            logger.warning("Invalid media ID: " + e.getMessage());
-            return ResponseEntity.badRequest().build();
+
+            byte[] data = outputStream.toByteArray();
+            if (data.length == 0) {
+                logger.log(Level.WARNING, "Failed to read media data: {0}", mediaId);
+                return ResponseEntity.noContent().build();
+            }
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.parseMediaType(contentType));
+            headers.setContentLength(data.length);
+            headers.setCacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePublic());
+            headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
+            headers.set(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Length, Content-Range");
+
+            return ResponseEntity.ok()
+                .headers(headers)
+                .body(new ByteArrayResource(data));
+
         } catch (Exception e) {
-            logger.severe("Error retrieving media: " + e.getMessage());
-            e.printStackTrace();
+            logger.log(Level.SEVERE, "Error retrieving media: " + mediaId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
     private String determineContentType(String filename, org.bson.Document metadata) {
-        // Try to get from metadata first
-        if (metadata != null && metadata.containsKey("contentType")) {
-            return metadata.getString("contentType");
-        }
+        String defaultType = "application/octet-stream";
         
-        if (metadata != null && metadata.getString("type") != null) {
-            switch (metadata.getString("type")) {
-                case "image":
-                    return "image/jpeg";
-                case "video":
-                    return "video/mp4";
+        try {
+            if (metadata != null) {
+                String contentType = metadata.getString("contentType");
+                if (contentType != null) return contentType;
+                
+                String type = metadata.getString("type");
+                if ("image".equals(type)) return "image/jpeg";
+                if ("video".equals(type)) return "video/mp4";
             }
+
+            if (filename != null) {
+                String lower = filename.toLowerCase();
+                if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+                if (lower.endsWith(".png")) return "image/png";
+                if (lower.endsWith(".gif")) return "image/gif";
+                if (lower.endsWith(".webp")) return "image/webp";
+                if (lower.endsWith(".mp4")) return "video/mp4";
+                if (lower.endsWith(".mov")) return "video/quicktime";
+            }
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error determining content type", e);
         }
 
-        // Fallback to filename extension
-        if (filename != null) {
-            filename = filename.toLowerCase();
-            if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
-                return "image/jpeg";
-            }
-            if (filename.endsWith(".png")) {
-                return "image/png";
-            }
-            if (filename.endsWith(".mp4")) {
-                return "video/mp4";
-            }
-            if (filename.endsWith(".mov")) {
-                return "video/quicktime";
-            }
-            if (filename.endsWith(".gif")) {
-                return "image/gif";
-            }
-            if (filename.endsWith(".webp")) {
-                return "image/webp";
-            }
-        }
-
-        // Default fallback
-        return "application/octet-stream";
+        return defaultType;
     }
 }

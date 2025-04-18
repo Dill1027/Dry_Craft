@@ -9,6 +9,7 @@ function CreatePost({ onPostCreated }) {
   const [previewUrls, setPreviewUrls] = useState([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const navigate = useNavigate();
@@ -94,8 +95,8 @@ function CreatePost({ onPostCreated }) {
     setIsLoading(true);
 
     const user = JSON.parse(localStorage.getItem("user"));
-
     if (!user || !user.id) {
+      setError("Please login to create a post");
       navigate("/login");
       return;
     }
@@ -135,20 +136,21 @@ function CreatePost({ onPostCreated }) {
       if (onPostCreated) {
         onPostCreated(response.data);
       }
+      
+      // Show success message inline
+      setSuccess("Post created successfully");
+      setTimeout(() => setSuccess(null), 3000); // Clear success after 3s
 
-      // Show success message
-      alert("Post created successfully!");
     } catch (error) {
       console.error("Error creating post:", error);
       if (error.code === "ECONNABORTED") {
-        setError("Upload timed out. Please try again with a smaller file or check your connection.");
+        setError("Upload timed out. Please try again with a smaller file");
       } else if (error.response?.status === 403) {
         setError("Not authorized. Please log in again.");
-        localStorage.removeItem("user");  
+        localStorage.removeItem("user");
         navigate("/login");
       } else {
-        const errorMessage = error.response?.data?.message || error.response?.data || "Failed to create post. Please try again.";
-        setError(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : errorMessage);
+        setError(error.response?.data?.message || "Failed to create post");
       }
     } finally {
       setIsLoading(false);
@@ -167,6 +169,7 @@ function CreatePost({ onPostCreated }) {
     <div className="bg-white rounded-lg shadow-md p-4 mb-4">
       <h2 className="text-xl font-semibold mb-4">Create Post</h2>
       {error && <p className="text-red-500 mb-4">{error}</p>}
+      {success && <p className="text-green-500 mb-4">{success}</p>}
       <form onSubmit={handleSubmit}>
         <textarea
           className="w-full p-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
