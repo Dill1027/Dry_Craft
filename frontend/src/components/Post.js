@@ -12,76 +12,76 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
   const [mediaUrls, setMediaUrls] = useState({});
   const [error, setError] = useState(null);
   const [videoError, setVideoError] = useState(false);
+  const [isLiked, setIsLiked] = useState(post.isLiked);
+  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [showComments, setShowComments] = useState(false);
+  const [showAllComments, setShowAllComments] = useState(false);
+  const [comments, setComments] = useState(post.comments || []);
+  const [newComment, setNewComment] = useState("");
   const user = JSON.parse(localStorage.getItem("user"));
+  const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
+
+  const visibleComments = showAllComments ? comments : comments.slice(0, 2);
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString();
   };
 
-  // Construct full URL for relative paths
   const getFullUrl = (url) => {
     if (!url) return "";
     if (url.startsWith("http://") || url.startsWith("https://")) return url;
     return `${window.location.protocol}//${window.location.hostname}:8081${url}`;
   };
 
-  // Fetch media as a blob and create object URL
   const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
     try {
       const response = await axiosInstance.get(`/api/media/${mediaId}`, {
         responseType: "blob",
-        timeout: 30000,
-        validateStatus: (status) => status === 200,
+        timeout: 60000,
         headers: {
           'Accept': 'image/*, video/*',
+          'Range': 'bytes=0-',
           'Cache-Control': 'no-cache'
+        },
+        onDownloadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`Loading media ${mediaId}: ${percentCompleted}%`);
         }
       });
 
-      // Get content type from response headers
-      const contentType = response.headers['content-type'];
-      if (!contentType || !contentType.match(/^(image|video)\//)) {
-        throw new Error(`Invalid content type: ${contentType}`);
+      if (!response.data || response.data.size === 0) {
+        throw new Error('Empty response received');
       }
 
-      // Get and validate blob
-      const blob = response.data;
-      if (!(blob instanceof Blob) || blob.size === 0) {
-        throw new Error(`Invalid blob response: size=${blob?.size}`);
-      }
+      const blobUrl = URL.createObjectURL(new Blob([response.data], { 
+        type: response.headers['content-type'] 
+      }));
 
-      // Create and verify blob URL
-      const blobUrl = URL.createObjectURL(new Blob([blob], { type: contentType }));
-      if (!blobUrl) {
-        throw new Error('Failed to create blob URL');
-      }
-
-      console.log(`Successfully loaded media ${mediaId}: ${contentType}, ${blob.size} bytes`);
       return blobUrl;
 
     } catch (error) {
       console.error(`Error loading media ${mediaId}:`, error);
       
-      // Only retry for recoverable errors
       const isRecoverable = 
         error.code === 'ECONNABORTED' ||
         error.response?.status >= 500 ||
-        error.message.includes('Invalid blob') ||
-        error.message.includes('Failed to create blob');
+        error.message.includes('timeout') ||
+        error.message.includes('network error');
 
       if (retryCount < 3 && isRecoverable) {
-        const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+        const delay = Math.min(2000 * Math.pow(2, retryCount), 15000);
         console.log(`Retrying media load for ${mediaId}, attempt ${retryCount + 1} after ${delay}ms`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return getMediaUrl(mediaId, originalUrl, retryCount + 1);
       }
 
-      // Return fallback URL after retries exhausted
-      return getFullUrl(originalUrl);
+      if (originalUrl) {
+        return getFullUrl(originalUrl);
+      }
+      throw error;
     }
   };
 
-  // Update image error handling
   const handleImageError = (url) => {
     console.error("Image failed to load:", url);
     return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIEZhaWxlZCB0byBMb2FkPC90ZXh0Pjwvc3ZnPg==";
@@ -89,10 +89,9 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
 
   const loadMedia = async () => {
     try {
-      setVideoError(false); // Reset video error state
+      setVideoError(false);
       const newMediaUrls = {};
 
-      // Load video first if exists
       if (post.videoUrl) {
         const mediaId = post.videoUrl.split("/").pop();
         const videoUrl = await getMediaUrl(mediaId, post.videoUrl);
@@ -101,7 +100,6 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
         }
       }
 
-      // Load images in parallel
       if (post.imageUrls?.length) {
         const imagePromises = post.imageUrls.map(async (url) => {
           const mediaId = url.split("/").pop();
@@ -121,7 +119,6 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
     }
   };
 
-  // Load all media URLs
   useEffect(() => {
     let isMounted = true;
     const abortController = new AbortController();
@@ -152,7 +149,7 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
     } catch (error) {
       console.error("Error deleting post:", error);
       setError("Failed to delete post");
-      setTimeout(() => setError(null), 3000); // Clear error after 3s
+      setTimeout(() => setError(null), 3000);
     } finally {
       setDeleting(false);
     }
@@ -191,14 +188,60 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
       onPostUpdated?.(response.data);
       setIsEditing(false);
 
-      // Clean up preview URLs
       editPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
     } catch (error) {
       console.error("Error updating post:", error);
       setError(error.response?.data || "Failed to update post");
-      setTimeout(() => setError(null), 3000); // Clear error after 3s
+      setTimeout(() => setError(null), 3000);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const handleLike = async () => {
+    try {
+      const response = await axiosInstance.post(
+        `/api/posts/${post.id}/like`,
+        null,
+        {
+          params: {
+            userId: user.id
+          }
+        }
+      );
+      setIsLiked(response.data.isLiked);
+      setLikeCount(response.data.likeCount);
+    } catch (error) {
+      console.error('Error toggling like:', error);
+      setError("Failed to update like status");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleCommentClick = () => {
+    setShowAllComments(!showAllComments);
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+    
+    try {
+      const response = await axiosInstance.post(
+        `/api/posts/${post.id}/comments`,
+        null,
+        {
+          params: {
+            userId: user.id,
+            content: newComment.trim()
+          }
+        }
+      );
+      setComments(response.data.comments);
+      setNewComment("");
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      setError("Failed to add comment");
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -256,9 +299,14 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
         <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
           {post.userProfilePicture ? (
             <img
-              src={post.userProfilePicture}
+              src={post.userProfilePicture.startsWith('/api/') ? post.userProfilePicture : `/api/media/${post.userProfilePicture}`}
               alt={post.userName}
               className="w-full h-full rounded-full object-cover"
+              onError={(e) => {
+                console.log('Failed to load profile picture:', e.target.src);
+                e.target.onerror = null;
+                e.target.src = defaultAvatarUrl;
+              }}
             />
           ) : (
             <span className="text-lg font-semibold">
@@ -384,54 +432,92 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
             );
           })}
 
-          <div className="flex items-center space-x-6 border-t pt-4">
-            <button className="flex items-center space-x-2 text-gray-500 hover:text-red-500">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div className="flex flex-col border-t mt-4 pt-4">
+            <div className="flex items-center space-x-6 mb-4">
+              <button
+                onClick={handleLike}
+                className={`flex items-center space-x-1 ${
+                  isLiked ? "text-blue-500" : "text-gray-500"
+                }`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-              <span>{post.likes}</span>
-            </button>
-            <button className="flex items-center space-x-2 text-gray-500 hover:text-blue-500">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+                <svg
+                  className="w-5 h-5"
+                  fill={isLiked ? "currentColor" : "none"}
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+                  />
+                </svg>
+                <span>{likeCount}</span>
+              </button>
+              
+              <button 
+                onClick={() => setShowComments(!showComments)}
+                className="flex items-center space-x-2 text-gray-500 hover:text-blue-500"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                />
-              </svg>
-              <span>{post.comments?.length || 0}</span>
-            </button>
-            <button className="flex items-center space-x-2 text-gray-500 hover:text-green-500">
-              <svg
-                className="w-6 h-6"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
-                />
-              </svg>
-            </button>
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                  />
+                </svg>
+                <span>{comments.length}</span>
+              </button>
+            </div>
+
+            {showComments && (
+              <div className="mt-4 space-y-3">
+                {visibleComments.map((comment, index) => (
+                  <div key={index} className="p-3 bg-gray-50 rounded-lg mb-2">
+                    <p className="text-sm text-gray-600">{comment}</p>
+                  </div>
+                ))}
+                
+                {comments.length > 2 && (
+                  <button
+                    onClick={handleCommentClick}
+                    className="text-sm text-blue-500 hover:text-blue-600 mb-4"
+                  >
+                    {showAllComments 
+                      ? "Show less comments" 
+                      : `Show ${comments.length - 2} more comments`}
+                  </button>
+                )}
+                
+                <div className="flex gap-2 mt-3">
+                  <input
+                    type="text"
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    onClick={handleAddComment}
+                    disabled={!newComment.trim()}
+                    className={`px-4 py-2 rounded text-white ${
+                      !newComment.trim() 
+                        ? "bg-gray-300 cursor-not-allowed" 
+                        : "bg-blue-500 hover:bg-blue-600"
+                    }`}
+                  >
+                    Comment
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}

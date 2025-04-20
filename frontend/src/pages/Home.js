@@ -8,11 +8,13 @@ function Home() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
   const fetchPosts = async () => {
     try {
       setError(null);
+      setLoading(true);
       const response = await axiosInstance.get("/api/posts");
       setPosts(response.data);
     } catch (err) {
@@ -26,7 +28,13 @@ function Home() {
       }
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
+  };
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchPosts();
   };
 
   useEffect(() => {
@@ -35,6 +43,11 @@ function Home() {
 
   const handlePostCreated = (newPost) => {
     setPosts([newPost, ...posts]);
+    // Add celebration effect
+    const celebration = document.createElement('div');
+    celebration.className = 'celebration-effect';
+    document.body.appendChild(celebration);
+    setTimeout(() => celebration.remove(), 1000);
   };
 
   const handlePostDeleted = (postId) => {
@@ -49,39 +62,200 @@ function Home() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100">
+        <div className="relative">
+          <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-purple-500 border-opacity-30"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div className="rounded-full h-10 w-10 bg-gradient-to-r from-purple-400 to-blue-500 animate-pulse"></div>
+          </div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-4 text-purple-600 font-medium">
+            Loading your feed...
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="bg-red-50 p-4 rounded-lg">
-          <p className="text-red-600">{error}</p>
-          <button
-            onClick={fetchPosts}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Retry
-          </button>
+      <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100">
+        <div className="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full transform transition-all duration-500 hover:scale-[1.02] hover:shadow-3xl">
+          <div className="flex flex-col items-center">
+            <div className="relative mb-6">
+              <div className="bg-red-100 p-4 rounded-full animate-bounce">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-12 w-12 text-red-500"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <div className="absolute -inset-2 border-2 border-red-200 rounded-full animate-ping opacity-75"></div>
+            </div>
+            <p className="text-red-600 text-xl font-semibold text-center mb-6">
+              {error}
+            </p>
+            <button
+              onClick={handleRefresh}
+              className="relative overflow-hidden px-8 py-3 bg-gradient-to-r from-purple-500 to-blue-500 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-purple-300 focus:ring-opacity-50"
+            >
+              {isRefreshing ? (
+                <span className="flex items-center">
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Refreshing...
+                </span>
+              ) : (
+                <span>Retry</span>
+              )}
+              <span className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 hover:opacity-100 transition-opacity duration-300"></span>
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-2xl mx-auto py-8 px-4">
-      <CreatePost onPostCreated={handlePostCreated} />
-      {posts.map((post) => (
-        <Post
-          key={post.id}
-          post={post}
-          onPostDeleted={handlePostDeleted}
-          onPostUpdated={handlePostUpdated}
-        />
-      ))}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-10 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto space-y-8">
+        <CreatePost onPostCreated={handlePostCreated} />
+        
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+            Community Feed
+          </h2>
+          <button 
+            onClick={handleRefresh}
+            className="flex items-center text-sm text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            {isRefreshing ? (
+              <svg className="animate-spin -ml-1 mr-1 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg className="-ml-1 mr-1 h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          {posts.map((post, index) => (
+            <div 
+              key={post.id}
+              className="transform transition-all duration-500 hover:scale-[1.01] group"
+              style={{
+                animation: `fadeInUp ${0.5 + (index * 0.1)}s ease-out forwards`,
+                opacity: 0
+              }}
+            >
+              <div className="relative">
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-400 to-blue-500 rounded-lg opacity-0 group-hover:opacity-10 blur transition-opacity duration-300"></div>
+                <Post
+                  post={post}
+                  onPostDeleted={handlePostDeleted}
+                  onPostUpdated={handlePostUpdated}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {posts.length === 0 && (
+          <div className="text-center py-16">
+            <div className="mx-auto h-32 w-32 text-gray-300 mb-6 animate-float">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-600 to-gray-800 bg-clip-text text-transparent mb-3">
+              No posts yet
+            </h3>
+            <p className="text-gray-500 max-w-md mx-auto">
+              The community is waiting for your first post! Share your thoughts, ideas, or questions.
+            </p>
+            <div className="mt-6">
+              <div className="inline-block bg-gradient-to-r from-purple-500 to-blue-500 p-0.5 rounded-full animate-gradient-xy">
+                <button 
+                  onClick={() => document.querySelector('textarea')?.focus()}
+                  className="px-6 py-2 bg-white rounded-full text-purple-600 font-medium hover:text-purple-800 transition-colors"
+                >
+                  Create First Post
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <style>
+        {`
+          @keyframes fadeInUp {
+            from {
+              opacity: 0;
+              transform: translateY(20px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+          }
+          @keyframes gradient-xy {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+          .animate-float {
+            animation: float 3s ease-in-out infinite;
+          }
+          .animate-gradient-xy {
+            background-size: 200% 200%;
+            animation: gradient-xy 3s ease infinite;
+          }
+          .celebration-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.8) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 1000;
+            animation: fadeOut 1s ease-out forwards;
+          }
+          @keyframes fadeOut {
+            to { opacity: 0; }
+          }
+        `}
+      </style>
     </div>
   );
 }

@@ -1,7 +1,6 @@
 package com.example.backend.controller;
 
 import java.io.ByteArrayOutputStream;
-import java.time.Duration;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -9,7 +8,6 @@ import java.util.logging.Logger;
 import org.bson.types.ObjectId;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -109,57 +108,86 @@ public class PostController {
         }
     }
 
-    @GetMapping("/media/{mediaId}")
-    public ResponseEntity<Resource> getMedia(@PathVariable String mediaId) {
+    @PostMapping("/posts/{postId}/like")
+    public ResponseEntity<PostResponse> toggleLike(
+            @PathVariable String postId,
+            @RequestParam String userId) {
         try {
-            logger.log(Level.INFO, "Fetching media with ID: {0}", mediaId);
-            
+            PostResponse response = postService.toggleLike(postId, userId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error toggling like: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/posts/{postId}/comments")
+    public ResponseEntity<PostResponse> addComment(
+            @PathVariable String postId,
+            @RequestParam String userId,
+            @RequestParam String content) {
+        try {
+            PostResponse response = postService.addComment(postId, userId, content);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error adding comment: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @GetMapping("/media/{mediaId}")
+    public ResponseEntity<Resource> getMedia(
+            @PathVariable String mediaId,
+            @RequestHeader(value = "Range", required = false) String rangeHeader) {
+        try {
             if (!ObjectId.isValid(mediaId)) {
-                logger.log(Level.WARNING, "Invalid media ID format: {0}", mediaId);
                 return ResponseEntity.badRequest().build();
             }
-            
+
             ObjectId objectId = new ObjectId(mediaId);
             GridFSFile file = gridFSBucket.find(new org.bson.Document("_id", objectId)).first();
-            
+
             if (file == null) {
-                logger.log(Level.WARNING, "Media not found with ID: {0}", mediaId);
                 return ResponseEntity.notFound().build();
             }
 
-            String contentType = determineContentType(file.getFilename(), file.getMetadata());
             long contentLength = file.getLength();
+            long start = 0;
+            long end = contentLength - 1;
 
-            if (contentLength == 0) {
-                logger.log(Level.WARNING, "Empty media file: {0}", mediaId);
-                return ResponseEntity.noContent().build();
-            }
-
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream((int) contentLength);
-            try (GridFSDownloadStream downloadStream = gridFSBucket.openDownloadStream(objectId)) {
-                byte[] buffer = new byte[8192];
-                int bytesRead;
-                while ((bytesRead = downloadStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
+            // Parse range header if present
+            if (rangeHeader != null) {
+                String[] ranges = rangeHeader.replace("bytes=", "").split("-");
+                start = Long.parseLong(ranges[0]);
+                if (ranges.length > 1) {
+                    end = Long.parseLong(ranges[1]);
                 }
             }
 
-            byte[] data = outputStream.toByteArray();
-            if (data.length == 0) {
-                logger.log(Level.WARNING, "Failed to read media data: {0}", mediaId);
-                return ResponseEntity.noContent().build();
+            long contentSize = end - start + 1;
+            HttpHeaders headers = new HttpHeaders();
+            String contentType = determineContentType(file.getFilename(), file.getMetadata());
+            headers.setContentType(MediaType.parseMediaType(contentType));
+            headers.add("Accept-Ranges", "bytes");
+            headers.add("Content-Range", String.format("bytes %d-%d/%d", start, end, contentLength));
+            headers.setContentLength(contentSize);
+
+            // Stream the content
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            try (GridFSDownloadStream downloadStream = gridFSBucket.openDownloadStream(objectId)) {
+                downloadStream.skip(start);
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+                long totalRead = 0;
+                while (totalRead < contentSize && (bytesRead = downloadStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, (int) Math.min(bytesRead, contentSize - totalRead));
+                    totalRead += bytesRead;
+                }
             }
 
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.parseMediaType(contentType));
-            headers.setContentLength(data.length);
-            headers.setCacheControl(CacheControl.maxAge(Duration.ofHours(1)).cachePublic());
-            headers.set(HttpHeaders.ACCEPT_RANGES, "bytes");
-            headers.set(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS, "Content-Length, Content-Range");
-
-            return ResponseEntity.ok()
-                .headers(headers)
-                .body(new ByteArrayResource(data));
+            return ResponseEntity.status(rangeHeader != null ? HttpStatus.PARTIAL_CONTENT : HttpStatus.OK)
+                    .headers(headers)
+                    .body(new ByteArrayResource(outputStream.toByteArray()));
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Error retrieving media: " + mediaId, e);

@@ -3,6 +3,7 @@ package com.example.backend.config;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.concurrent.TimeUnit;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
@@ -23,6 +24,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
+        // Add handler for static images
+        registry.addResourceHandler("/images/**")
+                .addResourceLocations("classpath:/static/images/")
+                .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS));
+
+        // Existing resource handlers
         Path uploadDir = Paths.get(uploadDirectory).toAbsolutePath().normalize();
         registry.addResourceHandler("/api/uploads/**", "/api/media/**")
                 .addResourceLocations("file:" + uploadDir.toString() + "/")

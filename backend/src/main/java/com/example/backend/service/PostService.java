@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -54,7 +56,24 @@ public class PostService {
         User user = getUserDetails(post.getUserId());
         response.setUserName(user.getFirstName() + " " + user.getLastName());
         response.setUserProfilePicture(user.getProfilePicture());
+        response.setLikeCount(post.getLikeCount());
+        String currentUserId = getCurrentUserId();
+        if (currentUserId != null) {
+            response.setIsLiked(post.isLikedByUser(currentUserId));
+        }
         return response;
+    }
+
+    private String getCurrentUserId() {
+        try {
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null && auth.isAuthenticated()) {
+                return auth.getName();
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting current user id: " + e.getMessage());
+        }
+        return null;
     }
 
     public PostResponse createPost(String userId, String content, List<MultipartFile> images, MultipartFile video) {
@@ -204,5 +223,33 @@ public class PostService {
         } catch (IOException e) {
             throw new RuntimeException("Failed to update media: " + e.getMessage());
         }
+    }
+
+    public PostResponse toggleLike(String postId, String userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        if (post.getLikedByUsers().contains(userId)) {
+            post.getLikedByUsers().remove(userId);
+        } else {
+            post.getLikedByUsers().add(userId);
+        }
+
+        post = postRepository.save(post);
+        return new PostResponse(post, userId);
+    }
+
+    public PostResponse addComment(String postId, String userId, String content) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        User user = getUserDetails(userId);
+        String fullName = user.getFirstName() + " " + user.getLastName();
+        String commentText = fullName + ": " + content;
+        
+        post.getComments().add(commentText);
+        post = postRepository.save(post);
+        
+        return convertToPostResponse(post);
     }
 }

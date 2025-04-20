@@ -44,10 +44,12 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .httpBasic(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/images/**").permitAll() // Allow access to static images
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/media/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/users/*/profile-picture").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/error").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/posts", "/api/posts/**", "/api.media/**").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

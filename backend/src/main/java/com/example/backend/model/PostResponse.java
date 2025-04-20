@@ -16,6 +16,8 @@ public class PostResponse {
     private int likes;
     private List<String> comments = new ArrayList<>();
     private LocalDateTime createdAt;
+    private int likeCount;
+    private boolean isLiked;
 
     public PostResponse() {
     }
@@ -30,6 +32,20 @@ public class PostResponse {
         this.likes = post.getLikes();
         this.comments = post.getComments();
         this.createdAt = post.getCreatedAt();
+    }
+
+    public PostResponse(Post post, String currentUserId) {
+        this.id = post.getId();
+        this.userId = post.getUserId();
+        this.content = post.getContent();
+        this.videoUrl = post.getVideoUrl();
+        this.imageUrls = post.getImageUrls();
+        this.mediaIds = post.getMediaIds();
+        this.likes = post.getLikes();
+        this.comments = post.getComments();
+        this.createdAt = post.getCreatedAt();
+        this.likeCount = post.getLikeCount();
+        this.isLiked = post.isLikedByUser(currentUserId);
     }
 
     // Getters and setters
@@ -103,6 +119,7 @@ public class PostResponse {
 
     public void setLikes(int likes) {
         this.likes = likes;
+        this.likeCount = likes; // Keep both fields in sync
     }
 
     public List<String> getComments() {
@@ -119,5 +136,21 @@ public class PostResponse {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public int getLikeCount() {
+        return this.likeCount;
+    }
+
+    public void setLikeCount(int likeCount) {
+        this.likeCount = likeCount;
+    }
+
+    public boolean getIsLiked() {
+        return this.isLiked;
+    }
+
+    public void setIsLiked(boolean isLiked) {
+        this.isLiked = isLiked;
     }
 }

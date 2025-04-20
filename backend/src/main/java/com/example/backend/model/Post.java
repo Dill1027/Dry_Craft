@@ -1,11 +1,13 @@
 package com.example.backend.model;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
-
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "posts")
 public class Post {
@@ -16,7 +18,7 @@ public class Post {
     private String videoUrl;
     private List<String> imageUrls = new ArrayList<>();
     private List<String> mediaIds = new ArrayList<>(); // Store GridFS IDs
-    private int likes = 0;
+    private Set<String> likedByUsers = new HashSet<>(); // Replace the likes field
     private List<String> comments = new ArrayList<>();
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -25,14 +27,14 @@ public class Post {
 
     // Constructor for PostResponse
     public Post(String id, String userId, String content, String videoUrl, List<String> imageUrls,
-            List<String> mediaIds, int likes, List<String> comments, LocalDateTime createdAt) {
+            List<String> mediaIds, Set<String> likedByUsers, List<String> comments, LocalDateTime createdAt) {
         this.id = id;
         this.userId = userId;
         this.content = content;
         this.videoUrl = videoUrl;
         this.imageUrls = imageUrls != null ? imageUrls : new ArrayList<>();
         this.mediaIds = mediaIds != null ? mediaIds : new ArrayList<>();
-        this.likes = likes;
+        this.likedByUsers = likedByUsers != null ? likedByUsers : new HashSet<>();
         this.comments = comments != null ? comments : new ArrayList<>();
         this.createdAt = createdAt;
     }
@@ -86,12 +88,29 @@ public class Post {
         this.mediaIds = mediaIds;
     }
 
+    public Set<String> getLikedByUsers() {
+        return likedByUsers;
+    }
+
+    public void setLikedByUsers(Set<String> likedByUsers) {
+        this.likedByUsers = likedByUsers;
+    }
+
+    public int getLikeCount() {
+        return likedByUsers.size();
+    }
+
+    public boolean isLikedByUser(String userId) {
+        return likedByUsers.contains(userId);
+    }
+
     public int getLikes() {
-        return likes;
+        return this.likedByUsers != null ? this.likedByUsers.size() : 0;
     }
 
     public void setLikes(int likes) {
-        this.likes = likes;
+        // This method is kept for compatibility but doesn't need implementation
+        // since we're using likedByUsers set instead
     }
 
     public List<String> getComments() {
