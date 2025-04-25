@@ -19,11 +19,9 @@ function TutorialForm() {
   const [progress, setProgress] = useState(0);
 
   const resetMediaInputs = () => {
-    // Clean up existing previews
     imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
     if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
-    
-    // Reset states
+
     setImages([]);
     setImagePreviewUrls([]);
     setVideo(null);
@@ -34,17 +32,14 @@ function TutorialForm() {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    // Reset video first
     if (video) resetMediaInputs();
 
-    // Validate file types
     const validImages = files.every(file => file.type.startsWith('image/'));
     if (!validImages) {
       setError('Please upload only image files');
       return;
     }
 
-    // Validate file sizes (5MB limit per image)
     const validSizes = files.every(file => file.size <= 5 * 1024 * 1024);
     if (!validSizes) {
       setError('Each image must be less than 5MB');
@@ -64,16 +59,13 @@ function TutorialForm() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Reset images first
     if (images.length > 0) resetMediaInputs();
 
-    // Validate video size (50MB limit)
     if (file.size > 50 * 1024 * 1024) {
       setError('Video must be less than 50MB');
       return;
     }
 
-    // Validate video format
     if (!['video/mp4', 'video/quicktime'].includes(file.type)) {
       setError('Only MP4 and QuickTime videos are supported');
       return;
@@ -125,28 +117,25 @@ function TutorialForm() {
     try {
       setLoading(true);
       setError('');
-      
+
       const formDataToSend = new FormData();
       formDataToSend.append('userId', user.id);
       formDataToSend.append('title', formData.title.trim());
       formDataToSend.append('description', formData.description.trim());
-      
-      // Filter out empty steps and materials
+
       const filteredSteps = formData.steps.filter(step => step.trim());
       const filteredMaterials = formData.materials.filter(material => material.trim());
 
-      // Check if there are any steps
       if (filteredSteps.length === 0) {
         setError('At least one step is required');
         setLoading(false);
         return;
       }
-      
-      // Append each step and material individually with the correct parameter name
+
       filteredSteps.forEach((step) => {
         formDataToSend.append('steps', step);
       });
-      
+
       filteredMaterials.forEach((material) => {
         formDataToSend.append('materials', material);
       });
@@ -157,13 +146,12 @@ function TutorialForm() {
         });
       }
 
-      // Add video if selected
       if (video) {
         formDataToSend.append('video', video);
       }
 
       const response = await axiosInstance.uploadMedia('/api/tutorials', formDataToSend, {
-        timeout: 300000, // 5 minutes timeout
+        timeout: 300000,
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setProgress(progress);
@@ -171,10 +159,10 @@ function TutorialForm() {
       });
 
       navigate('/tutorials');
-      
+
     } catch (err) {
       console.error('Error creating tutorial:', err);
-      const errorMsg = err.code === 'ECONNABORTED' 
+      const errorMsg = err.code === 'ECONNABORTED'
         ? 'Upload timed out. Please try again with a smaller file or check your connection'
         : err.response?.data?.message || 'Failed to create tutorial';
       setError(errorMsg);
@@ -198,27 +186,31 @@ function TutorialForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto animate-fadeIn">
         <button
           onClick={() => navigate(-1)}
-          className="group mb-6 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors duration-200"
+          className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
+                   transition-all duration-300 hover:gap-3"
         >
-          <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" 
+          <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300" 
                fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
           </svg>
           <span className="font-medium">Go Back</span>
         </button>
 
-        <div className="bg-white rounded-xl shadow-lg p-8 backdrop-blur-sm backdrop-filter">
-          <h2 className="text-3xl font-bold text-gray-800 mb-8 text-center">Create Tutorial</h2>
+        <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-white/50">
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r 
+                       from-indigo-600 to-purple-600 mb-8 text-center">
+            Create Tutorial
+          </h2>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg animate-fadeIn">
-              <div className="flex items-center">
+            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg animate-shake">
+              <div className="flex items-center text-red-700">
                 <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
                 </svg>
                 {error}
               </div>
@@ -227,32 +219,60 @@ function TutorialForm() {
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 group-hover:text-indigo-600 
+                               transition-colors duration-200">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                    </svg>
+                    Title
+                  </div>
+                </label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({...formData, title: e.target.value})}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 
+                         focus:border-indigo-500 transition-all duration-200 hover:border-indigo-300
+                         bg-white/50 backdrop-blur-sm"
                   placeholder="Enter tutorial title"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 group-hover:text-indigo-600 
+                               transition-colors duration-200">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                            d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                    Description
+                  </div>
+                </label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   rows="4"
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 
+                         focus:border-indigo-500 transition-all duration-200 hover:border-indigo-300
+                         bg-white/50 backdrop-blur-sm resize-none"
                   placeholder="Describe your tutorial"
                   required
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-4">Steps</label>
+              <div className="space-y-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                  </svg>
+                  Steps
+                </label>
                 {formData.steps.map((step, index) => (
                   <div key={index} className="flex gap-3 mb-3 group">
                     <input
@@ -263,7 +283,9 @@ function TutorialForm() {
                         newSteps[index] = e.target.value;
                         setFormData({...formData, steps: newSteps});
                       }}
-                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 
+                             focus:border-indigo-500 transition-all duration-200 hover:border-indigo-300
+                             bg-white/50 backdrop-blur-sm"
                       placeholder={`Step ${index + 1}`}
                     />
                     {formData.steps.length > 1 && (
@@ -294,8 +316,14 @@ function TutorialForm() {
                 </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-4">Materials</label>
+              <div className="space-y-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                  <svg className="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                          d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                  </svg>
+                  Materials
+                </label>
                 {formData.materials.map((material, index) => (
                   <div key={index} className="flex gap-3 mb-3 group">
                     <input
@@ -306,7 +334,9 @@ function TutorialForm() {
                         newMaterials[index] = e.target.value;
                         setFormData({...formData, materials: newMaterials});
                       }}
-                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 
+                             focus:border-indigo-500 transition-all duration-200 hover:border-indigo-300
+                             bg-white/50 backdrop-blur-sm"
                       placeholder={`Material ${index + 1}`}
                     />
                     {formData.materials.length > 1 && (
@@ -338,7 +368,7 @@ function TutorialForm() {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">Images</label>
                     <input
@@ -348,7 +378,6 @@ function TutorialForm() {
                       onChange={handleImageChange}
                       className="block w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all duration-200"
                     />
-                    {/* Add reset button if images are selected */}
                     {imagePreviewUrls.length > 0 && (
                       <button
                         type="button"
@@ -385,7 +414,6 @@ function TutorialForm() {
                       onChange={handleVideoChange}
                       className="block w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all duration-200"
                     />
-                    {/* Add reset button if video is selected */}
                     {videoPreviewUrl && (
                       <button
                         type="button"
@@ -406,8 +434,11 @@ function TutorialForm() {
                     )}
                   </div>
                 </div>
-                
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
                   You can add either images or a video, but not both.
                 </p>
               </div>
@@ -416,23 +447,32 @@ function TutorialForm() {
             <button
               type="submit"
               disabled={loading || !formData.title.trim()}
-              className={`w-full py-3 rounded-lg font-semibold text-white transition-all duration-200 transform hover:-translate-y-1 ${
-                loading || !formData.title.trim()
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 shadow-lg hover:shadow-xl'
-              }`}
+              className="w-full py-3 rounded-lg font-semibold text-white transition-all duration-300 
+                       transform hover:-translate-y-1 disabled:translate-y-0 relative overflow-hidden
+                       disabled:opacity-50 disabled:cursor-not-allowed group"
             >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Creating...
-                </div>
-              ) : (
-                'Create Tutorial'
-              )}
+              <div className={`absolute inset-0 transition-all duration-300 
+                           bg-gradient-to-r from-indigo-600 to-purple-600 
+                           group-hover:from-indigo-700 group-hover:to-purple-700
+                           ${loading ? 'animate-shimmer' : ''}`}></div>
+              <div className="relative flex items-center justify-center gap-2">
+                {loading ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Creating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                    </svg>
+                    Create Tutorial
+                  </>
+                )}
+              </div>
             </button>
           </form>
         </div>
