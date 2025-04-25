@@ -4,6 +4,9 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from './components/Profile';
+import Tutorials from "./pages/Tutorials";
+import TutorialForm from "./pages/TutorialForm";
+import TutorialDetail from "./pages/TutorialDetail";
 
 function App() {
   return (
@@ -15,6 +18,9 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/tutorials" element={<Tutorials />} />
+            <Route path="/tutorials/create" element={<TutorialForm />} />
+            <Route path="/tutorials/:id" element={<TutorialDetail />} />
           </Routes>
         </div>
       </div>
