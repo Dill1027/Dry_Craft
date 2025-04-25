@@ -173,4 +173,21 @@ public class TutorialService {
             throw new IllegalArgumentException("Invalid step index");
         }
     }
+
+    public void deleteTutorial(String id) {
+        Tutorial tutorial = getTutorialById(id);
+        
+        // Delete associated media files
+        if (tutorial.getMediaIds() != null) {
+            tutorial.getMediaIds().forEach(mediaId -> {
+                try {
+                    gridFSBucket.delete(new org.bson.types.ObjectId(mediaId));
+                } catch (Exception ex) {
+                    System.err.println("Error deleting media file: " + ex.getMessage());
+                }
+            });
+        }
+
+        tutorialRepository.deleteById(id);
+    }
 }

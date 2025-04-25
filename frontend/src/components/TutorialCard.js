@@ -11,11 +11,15 @@ function TutorialCard({ tutorial, isManageable = false, onDelete }) {
     if (!window.confirm('Are you sure you want to delete this tutorial?')) return;
 
     try {
-      await axiosInstance.delete(`/api/tutorials/${tutorial.id}`);
-      onDelete?.(tutorial.id);
+      const response = await axiosInstance.delete(`/api/tutorials/${tutorial.id}`);
+      if (response.status === 200) {
+        onDelete?.(tutorial.id);
+      } else {
+        throw new Error('Failed to delete tutorial');
+      }
     } catch (error) {
       console.error('Error deleting tutorial:', error);
-      alert('Failed to delete tutorial');
+      alert('Failed to delete tutorial. Please try again later.');
     }
   };
 
