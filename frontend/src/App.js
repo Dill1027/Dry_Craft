@@ -7,6 +7,7 @@ import Profile from './components/Profile';
 import Tutorials from "./pages/Tutorials";
 import TutorialForm from "./pages/TutorialForm";
 import TutorialDetail from "./pages/TutorialDetail";
+import MyTutorials from "./pages/MyTutorials";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/tutorials" element={<Tutorials />} />
+            <Route path="/my-tutorials" element={<MyTutorials />} />
             <Route path="/tutorials/create" element={<TutorialForm />} />
             <Route path="/tutorials/:id" element={<TutorialDetail />} />
           </Routes>

@@ -168,7 +168,7 @@
   .card {
     @apply bg-white rounded-lg shadow-soft transition-all duration-300
            hover:shadow-elevated backdrop-blur-sm
-           dark:bg-gray-800 dark:highlight-white/5;
+           dark:bg-gray-800 dark:border-gray-700;
   }
 
   .form-group {

@@ -52,12 +52,20 @@ function Tutorials() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Tutorials</h1>
-          <button
-            onClick={() => navigate('/tutorials/create')}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Create Tutorial
-          </button>
+          <div className="flex gap-4">
+            <button
+              onClick={() => navigate('/tutorials/create')}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+            >
+              Create Tutorial
+            </button>
+            <button
+              onClick={() => navigate('/my-tutorials')}
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Manage Tutorials
+            </button>
+          </div>
         </div>
 
         {tutorials.length === 0 ? (
