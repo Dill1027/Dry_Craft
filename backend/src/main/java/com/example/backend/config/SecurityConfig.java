@@ -40,20 +40,30 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
-            .httpBasic(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/images/**").permitAll() // Allow access to static images
+                .requestMatchers("/api/products/**").permitAll()
+                .requestMatchers("/images/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/media/**").permitAll()
+                .requestMatchers("/api/addproducts/**").permitAll()
+                
+            .requestMatchers(HttpMethod.POST, "/api/addproducts/**").permitAll()   // 🔥 ALLOW POST
+            .requestMatchers(HttpMethod.PUT, "/api/addproducts/**").permitAll()    // 🔥 ALLOW PUT
+            .requestMatchers(HttpMethod.DELETE, "/api/products/**").permitAll() // 🔥 ALLOW DELETE
+            .requestMatchers("/api/auth/**").permitAll()
+            .requestMatchers("/api/media/**").permitAll()
+           
+                .requestMatchers("/api/productlist/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/users/*/profile-picture").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .anyRequest().authenticated()
             )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            .httpBasic(httpBasic -> httpBasic.disable())  // 🔥 disable basic auth
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .anonymous(Customizer.withDefaults());         // 🔥 allow anonymous access
 
         return http.build();
     }
