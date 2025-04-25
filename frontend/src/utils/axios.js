@@ -7,7 +7,7 @@ const axiosInstance = axios.create({
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 30000, // Increased default timeout to 30 seconds
+  timeout: 60000, // Increased to 1 minute for general requests
 });
 
 // Update request interceptor
@@ -91,7 +91,9 @@ axiosInstance.uploadMedia = (url, data, options = {}) => {
     url,
     method: 'POST',
     data,
-    timeout: 120000, // 2 minutes timeout for uploads
+    timeout: 300000, // Increased to 5 minutes for large uploads
+    maxContentLength: Infinity,
+    maxBodyLength: Infinity,
     headers: {
       'Content-Type': 'multipart/form-data',
     },

@@ -16,10 +16,26 @@ function TutorialForm() {
   const [error, setError] = useState('');
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
+  const [progress, setProgress] = useState(0);
+
+  const resetMediaInputs = () => {
+    // Clean up existing previews
+    imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    
+    // Reset states
+    setImages([]);
+    setImagePreviewUrls([]);
+    setVideo(null);
+    setVideoPreviewUrl('');
+  };
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
+
+    // Reset video first
+    if (video) resetMediaInputs();
 
     // Validate file types
     const validImages = files.every(file => file.type.startsWith('image/'));
@@ -41,21 +57,19 @@ function TutorialForm() {
       prev.forEach(url => URL.revokeObjectURL(url));
       return urls;
     });
-    setVideo(null);
-    setVideoPreviewUrl('');
+    setError('');
   };
 
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
-    if (!file) {
-      setVideo(null);
-      setVideoPreviewUrl('');
-      return;
-    }
+    if (!file) return;
 
-    // Validate video size (15MB limit)
-    if (file.size > 15 * 1024 * 1024) {
-      setError('Video must be less than 15MB');
+    // Reset images first
+    if (images.length > 0) resetMediaInputs();
+
+    // Validate video size (50MB limit)
+    if (file.size > 50 * 1024 * 1024) {
+      setError('Video must be less than 50MB');
       return;
     }
 
@@ -81,8 +95,6 @@ function TutorialForm() {
 
       setVideo(file);
       setVideoPreviewUrl(videoURL);
-      setImages([]);
-      setImagePreviewUrls([]);
       setError('');
     };
 
@@ -112,6 +124,8 @@ function TutorialForm() {
 
     try {
       setLoading(true);
+      setError('');
+      
       const formDataToSend = new FormData();
       formDataToSend.append('userId', user.id);
       formDataToSend.append('title', formData.title.trim());
@@ -148,18 +162,22 @@ function TutorialForm() {
         formDataToSend.append('video', video);
       }
 
-      await axiosInstance.post('/api/tutorials', formDataToSend, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      const response = await axiosInstance.uploadMedia('/api/tutorials', formDataToSend, {
+        timeout: 300000, // 5 minutes timeout
+        onUploadProgress: (progressEvent) => {
+          const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setProgress(progress);
         }
       });
 
-      // Redirect to tutorials page after successful creation
       navigate('/tutorials');
       
     } catch (err) {
       console.error('Error creating tutorial:', err);
-      setError(err.response?.data?.message || 'Failed to create tutorial');
+      const errorMsg = err.code === 'ECONNABORTED' 
+        ? 'Upload timed out. Please try again with a smaller file or check your connection'
+        : err.response?.data?.message || 'Failed to create tutorial';
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -329,8 +347,17 @@ function TutorialForm() {
                       multiple
                       onChange={handleImageChange}
                       className="block w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all duration-200"
-                      disabled={!!video}
                     />
+                    {/* Add reset button if images are selected */}
+                    {imagePreviewUrls.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={resetMediaInputs}
+                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                      >
+                        Clear Images
+                      </button>
+                    )}
                     {imagePreviewUrls.length > 0 && (
                       <div className="mt-4 grid grid-cols-3 gap-4">
                         {imagePreviewUrls.map((url, index) => (
@@ -350,15 +377,24 @@ function TutorialForm() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Video (Optional)
-                      <span className="text-xs text-gray-500 ml-2">Max 15MB, 30 sec</span>
+                      <span className="text-xs text-gray-500 ml-2">Max 50MB, 30 sec</span>
                     </label>
                     <input
                       type="file"
                       accept="video/mp4,video/quicktime"
                       onChange={handleVideoChange}
                       className="block w-full text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 transition-all duration-200"
-                      disabled={images.length > 0}
                     />
+                    {/* Add reset button if video is selected */}
+                    {videoPreviewUrl && (
+                      <button
+                        type="button"
+                        onClick={resetMediaInputs}
+                        className="mt-2 text-sm text-red-600 hover:text-red-800"
+                      >
+                        Clear Video
+                      </button>
+                    )}
                     {videoPreviewUrl && (
                       <div className="mt-4">
                         <video 

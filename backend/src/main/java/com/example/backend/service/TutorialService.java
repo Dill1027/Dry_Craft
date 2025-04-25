@@ -28,7 +28,7 @@ public class TutorialService {
     @Autowired
     private UserProgressRepository userProgressRepository;
 
-    private static final int MAX_VIDEO_SIZE_MB = 15;
+    private static final int MAX_VIDEO_SIZE_MB = 50; // Increased to 50MB
     private static final List<String> ALLOWED_VIDEO_TYPES = List.of("video/mp4", "video/quicktime");
 
     @Autowired

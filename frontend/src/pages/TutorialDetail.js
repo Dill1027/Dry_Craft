@@ -253,8 +253,9 @@ function TutorialDetail() {
                         <video 
                           src={tutorial.videoUrl}
                           controls
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain max-h-[80vh]" // Updated to use viewport height
                           poster={tutorial.imageUrl}
+                          preload="metadata"
                         />
                       </div>
                     ) : tutorial.imageUrl ? (
@@ -262,7 +263,7 @@ function TutorialDetail() {
                         <img
                           src={tutorial.imageUrl}
                           alt="Tutorial visualization"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-contain max-h-[80vh]" // Updated to use viewport height
                         />
                         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300" />
                       </div>
