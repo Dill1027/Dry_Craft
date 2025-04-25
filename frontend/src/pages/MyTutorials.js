@@ -9,6 +9,15 @@ function MyTutorials() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
+  const [editingTutorial, setEditingTutorial] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    title: '',
+    description: '',
+    steps: [],
+    materials: []
+  });
+  const [updating, setUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState(null);
 
   useEffect(() => {
     if (!user) {
@@ -27,6 +36,65 @@ function MyTutorials() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = (tutorial) => {
+    setEditingTutorial(tutorial);
+    setEditFormData({
+      title: tutorial.title,
+      description: tutorial.description,
+      steps: [...tutorial.steps],
+      materials: tutorial.materials ? [...tutorial.materials] : []
+    });
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setUpdating(true);
+    setUpdateError(null);
+
+    try {
+      const response = await axiosInstance.put(`/api/tutorials/${editingTutorial.id}`, editFormData);
+      const updatedTutorials = tutorials.map(t => 
+        t.id === editingTutorial.id ? response.data : t
+      );
+      setTutorials(updatedTutorials);
+      setEditingTutorial(null);
+    } catch (err) {
+      setUpdateError(err.response?.data?.message || 'Failed to update tutorial');
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const addStep = () => {
+    setEditFormData({
+      ...editFormData,
+      steps: [...editFormData.steps, '']
+    });
+  };
+
+  const removeStep = (index) => {
+    const newSteps = editFormData.steps.filter((_, i) => i !== index);
+    setEditFormData({
+      ...editFormData,
+      steps: newSteps
+    });
+  };
+
+  const addMaterial = () => {
+    setEditFormData({
+      ...editFormData,
+      materials: [...editFormData.materials, '']
+    });
+  };
+
+  const removeMaterial = (index) => {
+    const newMaterials = editFormData.materials.filter((_, i) => i !== index);
+    setEditFormData({
+      ...editFormData,
+      materials: newMaterials
+    });
   };
 
   if (loading) {
@@ -101,6 +169,7 @@ function MyTutorials() {
                 <TutorialCard
                   tutorial={tutorial}
                   isManageable={true}
+                  onEdit={() => handleEdit(tutorial)}
                   onDelete={(deletedId) => {
                     setTutorials(tutorials.filter(t => t.id !== deletedId));
                   }}
@@ -109,6 +178,127 @@ function MyTutorials() {
             ))}
           </div>
         )}
+
+        {editingTutorial ? (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold mb-4">Edit Tutorial</h2>
+              
+              {updateError && (
+                <div className="mb-4 p-3 bg-red-100 text-red-600 rounded-lg">{updateError}</div>
+              )}
+
+              <form onSubmit={handleUpdate} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={editFormData.title}
+                    onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={editFormData.description}
+                    onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+                    rows="4"
+                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Steps</label>
+                  {editFormData.steps.map((step, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={step}
+                        onChange={(e) => {
+                          const newSteps = [...editFormData.steps];
+                          newSteps[index] = e.target.value;
+                          setEditFormData({...editFormData, steps: newSteps});
+                        }}
+                        className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                        placeholder={`Step ${index + 1}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeStep(index)}
+                        className="px-3 py-1 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addStep}
+                    className="text-blue-500 hover:text-blue-600"
+                  >
+                    + Add Step
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Materials</label>
+                  {editFormData.materials.map((material, index) => (
+                    <div key={index} className="flex gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={material}
+                        onChange={(e) => {
+                          const newMaterials = [...editFormData.materials];
+                          newMaterials[index] = e.target.value;
+                          setEditFormData({...editFormData, materials: newMaterials});
+                        }}
+                        className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                        placeholder={`Material ${index + 1}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeMaterial(index)}
+                        className="px-3 py-1 text-red-500 hover:bg-red-50 rounded"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addMaterial}
+                    className="text-blue-500 hover:text-blue-600"
+                  >
+                    + Add Material
+                  </button>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-6">
+                  <button
+                    type="button"
+                    onClick={() => setEditingTutorial(null)}
+                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className={`px-4 py-2 rounded text-white ${
+                      updating ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+                    }`}
+                  >
+                    {updating ? 'Updating...' : 'Save Changes'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );

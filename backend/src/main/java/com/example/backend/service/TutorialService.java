@@ -190,4 +190,15 @@ public class TutorialService {
 
         tutorialRepository.deleteById(id);
     }
+
+    public Tutorial updateTutorial(String id, Tutorial updatedTutorial) {
+        Tutorial existingTutorial = getTutorialById(id);
+        
+        existingTutorial.setTitle(updatedTutorial.getTitle());
+        existingTutorial.setDescription(updatedTutorial.getDescription());
+        existingTutorial.setSteps(updatedTutorial.getSteps());
+        existingTutorial.setMaterials(updatedTutorial.getMaterials());
+        
+        return tutorialRepository.save(existingTutorial);
+    }
 }

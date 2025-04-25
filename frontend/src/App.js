@@ -8,6 +8,7 @@ import Tutorials from "./pages/Tutorials";
 import TutorialForm from "./pages/TutorialForm";
 import TutorialDetail from "./pages/TutorialDetail";
 import MyTutorials from "./pages/MyTutorials";
+import TutorialEdit from "./pages/TutorialEdit";
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
             <Route path="/my-tutorials" element={<MyTutorials />} />
             <Route path="/tutorials/create" element={<TutorialForm />} />
             <Route path="/tutorials/:id" element={<TutorialDetail />} />
+            <Route path="/tutorials/edit/:id" element={<TutorialEdit />} />
           </Routes>
         </div>
       </div>
