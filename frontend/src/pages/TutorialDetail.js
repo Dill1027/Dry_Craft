@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
 import Confetti from 'react-confetti';
 
@@ -15,6 +15,7 @@ function TutorialDetail() {
     height: window.innerHeight,
   });
   const { id } = useParams();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTutorial = async () => {
@@ -102,16 +103,26 @@ function TutorialDetail() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      {showConfetti && (
-        <Confetti
-          width={windowSize.width}
-          height={windowSize.height}
-          recycle={false}
-          numberOfPieces={200}
-        />
-      )}
-      
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto relative">
+        <button
+          onClick={() => navigate(-1)}
+          className="absolute -top-8 left-0 text-blue-600 hover:text-blue-800 flex items-center gap-2 transition-colors duration-200"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+          </svg>
+          Go Back
+        </button>
+
+        {showConfetti && (
+          <Confetti
+            width={windowSize.width}
+            height={windowSize.height}
+            recycle={false}
+            numberOfPieces={200}
+          />
+        )}
+        
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Title Section with Progress */}
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6 relative">
@@ -196,9 +207,16 @@ function TutorialDetail() {
                               )}
                             </div>
                           </div>
-                          <p className={`flex-1 text-gray-700 ${completedSteps.includes(index) ? 'line-through text-gray-500' : ''}`}>
-                            {step.instructions || step}
-                          </p>
+                          <div className="flex items-center gap-2 flex-1">
+                            <p className="text-gray-700">
+                              {step.instructions || step}
+                            </p>
+                            {completedSteps.includes(index) && (
+                              <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
                         </div>
 
                         {/* Step Image */}
