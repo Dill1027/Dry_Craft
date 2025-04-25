@@ -10,6 +10,11 @@ function Home() {
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   const fetchPosts = async () => {
     try {
@@ -37,13 +42,8 @@ function Home() {
     fetchPosts();
   };
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
   const handlePostCreated = (newPost) => {
     setPosts([newPost, ...posts]);
-    // Add celebration effect
     const celebration = document.createElement('div');
     celebration.className = 'celebration-effect';
     document.body.appendChild(celebration);
@@ -59,6 +59,44 @@ function Home() {
       posts.map((post) => (post.id === updatedPost.id ? updatedPost : post))
     );
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    navigate("/login");
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-10 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent mb-8">
+            Welcome to Dry Craft
+          </h1>
+          <p className="text-gray-600 mb-8">
+            Join our community to share and interact with others.
+          </p>
+          <div className="flex justify-center gap-4">
+            <button
+              onClick={() => navigate("/login")}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-500 text-white font-semibold rounded-lg 
+                       hover:shadow-lg transform hover:-translate-y-0.5 transition-all duration-200 
+                       focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => navigate("/register")}
+              className="px-8 py-3 border-2 border-purple-600 text-purple-600 font-semibold rounded-lg 
+                       hover:bg-purple-50 transform hover:-translate-y-0.5 transition-all duration-200
+                       focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+            >
+              Create Account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -129,6 +167,32 @@ function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+            Welcome, {user?.firstName || 'User'}
+          </h2>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-red-600 border-2 border-red-600 rounded-lg hover:bg-red-50 
+                     transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              />
+            </svg>
+            Logout
+          </button>
+        </div>
+
         <CreatePost onPostCreated={handlePostCreated} />
         
         <div className="flex justify-between items-center mb-4">

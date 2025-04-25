@@ -99,4 +99,35 @@ axiosInstance.uploadMedia = (url, data, options = {}) => {
   });
 };
 
+// Add new method for interaction requests with shorter timeout
+axiosInstance.interact = (url, method = 'POST', data = null, params = null) => {
+  return axiosInstance({
+    url,
+    method,
+    data,
+    params,
+    timeout: 10000, // 10 second timeout for interactions
+    retries: 2, // Allow 2 retries for interaction requests
+  });
+};
+
+// Add new method for media loading with optimized configuration
+axiosInstance.loadMedia = (mediaId, options = {}) => {
+  return axiosInstance({
+    url: `/api/media/${mediaId}`,
+    method: 'GET',
+    responseType: 'blob',
+    timeout: 30000, // 30 second timeout
+    headers: {
+      'Accept': 'image/*, video/*',
+      'Range': 'bytes=0-',
+      'Cache-Control': 'no-cache'
+    },
+    // Add retry configuration
+    retries: 3,
+    retryDelay: (retryCount) => Math.min(1000 * Math.pow(2, retryCount), 10000),
+    ...options,
+  });
+};
+
 export default axiosInstance;

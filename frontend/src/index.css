@@ -103,6 +103,41 @@
       @apply bg-gray-900/70 backdrop-blur-md border-gray-800/30;
     }
   }
+
+  /* Form Elements */
+  input, textarea, select {
+    @apply text-black;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-black
+           transition-colors duration-200
+           focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent
+           hover:border-primary-400
+           disabled:bg-gray-100 disabled:cursor-not-allowed;
+  }
+
+  textarea {
+    @apply text-black;
+  }
+
+  /* Placeholder Color */
+  ::placeholder {
+    @apply text-gray-500;
+  }
+
+  /* Override any material-ui input text colors */
+  .MuiInputBase-input {
+    color: #000000 !important;
+  }
+
+  .MuiOutlinedInput-input {
+    color: #000000 !important;
+  }
+
+  .MuiInput-input {
+    color: #000000 !important;
+  }
 }
 
 @layer components {

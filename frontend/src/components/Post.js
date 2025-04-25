@@ -33,16 +33,15 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
     return `${window.location.protocol}//${window.location.hostname}:8081${url}`;
   };
 
+  const handleImageError = (url) => {
+    console.error("Image failed to load:", url);
+    // Return fallback image URL
+    return `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/image-placeholder.png`;
+  };
+
   const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
     try {
-      const response = await axiosInstance.get(`/api/media/${mediaId}`, {
-        responseType: "blob",
-        timeout: 60000,
-        headers: {
-          'Accept': 'image/*, video/*',
-          'Range': 'bytes=0-',
-          'Cache-Control': 'no-cache'
-        },
+      const response = await axiosInstance.loadMedia(mediaId, {
         onDownloadProgress: (progressEvent) => {
           const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           console.log(`Loading media ${mediaId}: ${percentCompleted}%`);
@@ -53,28 +52,13 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
         throw new Error('Empty response received');
       }
 
-      const blobUrl = URL.createObjectURL(new Blob([response.data], { 
+      return URL.createObjectURL(new Blob([response.data], { 
         type: response.headers['content-type'] 
       }));
-
-      return blobUrl;
 
     } catch (error) {
       console.error(`Error loading media ${mediaId}:`, error);
       
-      const isRecoverable = 
-        error.code === 'ECONNABORTED' ||
-        error.response?.status >= 500 ||
-        error.message.includes('timeout') ||
-        error.message.includes('network error');
-
-      if (retryCount < 3 && isRecoverable) {
-        const delay = Math.min(2000 * Math.pow(2, retryCount), 15000);
-        console.log(`Retrying media load for ${mediaId}, attempt ${retryCount + 1} after ${delay}ms`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return getMediaUrl(mediaId, originalUrl, retryCount + 1);
-      }
-
       if (originalUrl) {
         return getFullUrl(originalUrl);
       }
@@ -82,40 +66,43 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
     }
   };
 
-  const handleImageError = (url) => {
-    console.error("Image failed to load:", url);
-    return "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIyNCIgZmlsbD0iIzY2NiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIEZhaWxlZCB0byBMb2FkPC90ZXh0Pjwvc3ZnPg==";
-  };
-
   const loadMedia = async () => {
     try {
       setVideoError(false);
       const newMediaUrls = {};
 
+      // Load video first if exists
       if (post.videoUrl) {
         const mediaId = post.videoUrl.split("/").pop();
-        const videoUrl = await getMediaUrl(mediaId, post.videoUrl);
-        if (videoUrl) {
-          newMediaUrls.video = videoUrl;
+        try {
+          const videoUrl = await getMediaUrl(mediaId, post.videoUrl);
+          if (videoUrl) newMediaUrls.video = videoUrl;
+        } catch (error) {
+          console.error('Error loading video:', error);
+          setVideoError(true);
         }
       }
 
+      // Load images in batches
       if (post.imageUrls?.length) {
-        const imagePromises = post.imageUrls.map(async (url) => {
-          const mediaId = url.split("/").pop();
-          const mediaUrl = await getMediaUrl(mediaId, url);
-          if (mediaUrl) {
-            newMediaUrls[mediaId] = mediaUrl;
-          }
-        });
-
-        await Promise.all(imagePromises);
+        const batchSize = 2;
+        for (let i = 0; i < post.imageUrls.length; i += batchSize) {
+          const batch = post.imageUrls.slice(i, i + batchSize);
+          await Promise.all(batch.map(async (url) => {
+            const mediaId = url.split("/").pop();
+            try {
+              const mediaUrl = await getMediaUrl(mediaId, url);
+              if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
+            } catch (error) {
+              console.error(`Error loading image ${mediaId}:`, error);
+            }
+          }));
+        }
       }
 
-      setMediaUrls(newMediaUrls);
+      setMediaUrls(prevUrls => ({...prevUrls, ...newMediaUrls}));
     } catch (error) {
-      console.error('Error loading media:', error);
-      setVideoError(true);
+      console.error('Error in loadMedia:', error);
     }
   };
 
@@ -200,20 +187,21 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
 
   const handleLike = async () => {
     try {
-      const response = await axiosInstance.post(
+      const response = await axiosInstance.interact(
         `/api/posts/${post.id}/like`,
+        'POST',
         null,
-        {
-          params: {
-            userId: user.id
-          }
-        }
+        { userId: user.id }
       );
+      
       setIsLiked(response.data.isLiked);
       setLikeCount(response.data.likeCount);
     } catch (error) {
       console.error('Error toggling like:', error);
-      setError("Failed to update like status");
+      setError(error.code === 'ECONNABORTED' 
+        ? "Request timed out. Please try again." 
+        : "Failed to update like status"
+      );
       setTimeout(() => setError(null), 3000);
     }
   };
