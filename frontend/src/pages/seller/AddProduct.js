@@ -1,7 +1,6 @@
 // src/components/AddProduct.js
 import React, { useState } from 'react';
 import { createProduct } from '../../services/productService';
-import { Container, Form, Button, Card, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 
 const AddProduct = () => {
@@ -47,49 +46,97 @@ const AddProduct = () => {
   };
 
   return (
-    <Container className="mt-4">
-      <Card>
-        <Card.Body>
-          <Card.Title>Add New Craft Product</Card.Title>
-          {error && <Alert variant="danger">{error}</Alert>}
-          <Form onSubmit={handleSubmit} encType="multipart/form-data">
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
-              <Form.Control name="name" value={product.name} onChange={handleChange} required />
-            </Form.Group>
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-2xl font-bold mb-6">Add New Product</h2>
+        
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
 
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control name="description" value={product.description} onChange={handleChange} required />
-            </Form.Group>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              name="name"
+              value={product.name}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Price</Form.Label>
-              <Form.Control type="number" name="price" value={product.price} onChange={handleChange} required />
-            </Form.Group>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <input
+              type="text"
+              name="description"
+              value={product.description}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Stock</Form.Label>
-              <Form.Control type="number" name="stock" value={product.stock} onChange={handleChange} required />
-            </Form.Group>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Price</label>
+            <input
+              type="number"
+              name="price"
+              value={product.price}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Color</Form.Label>
-              <Form.Control name="color" value={product.color} onChange={handleChange} required />
-            </Form.Group>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Stock</label>
+            <input
+              type="number"
+              name="stock"
+              value={product.stock}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
 
-            <Form.Group className="mb-3">
-              <Form.Label>Image</Form.Label>
-              <Form.Control type="file" accept="image/*" onChange={handleImageChange} />
-            </Form.Group>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Color</label>
+            <input
+              type="text"
+              name="color"
+              value={product.color}
+              onChange={handleChange}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+              required
+            />
+          </div>
 
-            <Button type="submit" variant="primary" disabled={loading}>
-              {loading ? 'Adding Product...' : 'Add Product'}
-            </Button>
-          </Form>
-        </Card.Body>
-      </Card>
-    </Container>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors disabled:bg-gray-400"
+          >
+            {loading ? 'Adding Product...' : 'Add Product'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 };
 

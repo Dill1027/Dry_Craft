@@ -1,7 +1,6 @@
 // src/components/ProductList.js
 import React, { useEffect, useState } from 'react';
 import { getAllProducts, deleteProduct, updateProduct } from '../../services/productService';
-import { Container, Row, Col, Card, Button, Form, Modal } from 'react-bootstrap';
 import { getFullUrl } from '../../utils/apiUtils';
 
 const ProductList = () => {
@@ -57,117 +56,119 @@ const ProductList = () => {
   };
 
   return (
-    <Container className="mt-4">
-      <h2 className="text-center mb-4">Craft Products</h2>
-      <Row>
+    <div className="container mx-auto px-4 py-8">
+      <h2 className="text-center text-2xl font-bold mb-6">Craft Products</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {products.map((product) => (
-          <Col key={product.id} md={4} sm={6} xs={12} className="mb-4">
-            <Card className="h-100 shadow-sm">
-              {product.imageUrl && (
-                <Card.Img
-                  variant="top"
-                  src={getFullUrl(product.imageUrl)}
-                  alt={product.name}
-                  style={{ height: '200px', objectFit: 'cover' }}
-                />
-              )}
-              <Card.Body className="d-flex flex-column">
-                <Card.Title>{product.name}</Card.Title>
-                <Card.Text className="flex-grow-1">
-                  {product.description}
-                </Card.Text>
-                <h5 className="mb-3">${product.price}</h5>
-                <div className="d-flex gap-2">
-                  <Button
-                    variant="primary"
-                    onClick={() => handleEditClick(product)}
-                    size="sm"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="danger"
-                    onClick={() => handleDelete(product.id)}
-                    size="sm"
-                  >
-                    Delete
-                  </Button>
-                </div>
-              </Card.Body>
-            </Card>
-          </Col>
+          <div key={product.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow duration-200">
+            {product.imageUrl && (
+              <img 
+                src={getFullUrl(product.imageUrl)} 
+                alt={product.name}
+                className="w-full h-48 object-cover rounded-md mb-4"
+              />
+            )}
+            <h3 className="text-xl font-semibold mb-2">{product.name}</h3>
+            <p className="text-gray-600 mb-4">{product.description}</p>
+            <p className="text-lg font-bold text-indigo-600 mb-4">${product.price}</p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => handleEditClick(product)}
+                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => handleDelete(product.id)}
+                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         ))}
-      </Row>
+      </div>
 
-      {/* Edit Product Modal */}
-      <Modal show={showEditModal} onHide={() => setShowEditModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Product</Modal.Title>
-        </Modal.Header>
-        <Form onSubmit={handleEditSubmit}>
-          <Modal.Body>
-            <Form.Group className="mb-3">
-              <Form.Label>Name</Form.Label>
-              <Form.Control
-                type="text"
-                name="name"
-                value={currentProduct.name}
-                onChange={handleEditChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Description</Form.Label>
-              <Form.Control
-                type="text"
-                name="description"
-                value={currentProduct.description}
-                onChange={handleEditChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Price</Form.Label>
-              <Form.Control
-                type="number"
-                name="price"
-                value={currentProduct.price}
-                onChange={handleEditChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Stock</Form.Label>
-              <Form.Control
-                type="number"
-                name="stock"
-                value={currentProduct.stock}
-                onChange={handleEditChange}
-                required
-              />
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Color</Form.Label>
-              <Form.Control
-                type="text"
-                name="color"
-                value={currentProduct.color}
-                onChange={handleEditChange}
-                required
-              />
-            </Form.Group>
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="success">
-              Save Changes
-            </Button>
-          </Modal.Footer>
-        </Form>
-      </Modal>
-    </Container>
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Edit Product</h2>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Name</label>
+                <input
+                  type="text"
+                  name="name"
+                  value={currentProduct.name}
+                  onChange={handleEditChange}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <input
+                  type="text"
+                  name="description"
+                  value={currentProduct.description}
+                  onChange={handleEditChange}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Price</label>
+                <input
+                  type="number"
+                  name="price"
+                  value={currentProduct.price}
+                  onChange={handleEditChange}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Stock</label>
+                <input
+                  type="number"
+                  name="stock"
+                  value={currentProduct.stock}
+                  onChange={handleEditChange}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Color</label>
+                <input
+                  type="text"
+                  name="color"
+                  value={currentProduct.color}
+                  onChange={handleEditChange}
+                  required
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
