@@ -106,14 +106,15 @@ function MyTutorials() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-colors duration-200"
+          className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
+                   transition-all duration-300 hover:gap-3"
         >
           <svg 
-            className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" 
+            className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300" 
             fill="none" 
             stroke="currentColor" 
             viewBox="0 0 24 24"
@@ -124,17 +125,22 @@ function MyTutorials() {
         </button>
 
         <div className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900 tracking-tight">My Tutorials</h1>
-            <p className="mt-2 text-lg text-gray-600">Manage and organize your created tutorials</p>
+          <div className="transform transition-all duration-500 hover:scale-[1.02]">
+            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+              My Tutorials
+            </h1>
+            <p className="mt-2 text-lg text-gray-600">
+              Manage and share your creative tutorials
+            </p>
           </div>
+          
           <button
             onClick={() => navigate('/tutorials/create')}
-            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg 
-                     hover:from-green-600 hover:to-emerald-700 transform hover:-translate-y-0.5 
+            className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg 
+                     hover:from-indigo-600 hover:to-purple-700 transform hover:-translate-y-0.5 
                      transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Create Tutorial
@@ -142,9 +148,10 @@ function MyTutorials() {
         </div>
 
         {tutorials.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-2xl shadow-sm border border-gray-100">
-            <div className="mb-6">
-              <svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center py-16 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 
+                        transform hover:scale-[1.01] transition-all duration-500">
+            <div className="mb-6 animate-bounce">
+              <svg className="w-16 h-16 mx-auto text-indigo-500/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" 
                       d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
@@ -153,7 +160,8 @@ function MyTutorials() {
             <p className="text-gray-600 mb-6">Start sharing your knowledge by creating your first tutorial!</p>
             <button
               onClick={() => navigate('/tutorials/create')}
-              className="px-6 py-3 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 
+              className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg 
+                       hover:from-indigo-600 hover:to-purple-700 transform hover:-translate-y-0.5 
                        transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,8 +172,15 @@ function MyTutorials() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {tutorials.map(tutorial => (
-              <div key={tutorial.id} className="transform hover:-translate-y-1 transition-all duration-200">
+            {tutorials.map((tutorial, index) => (
+              <div 
+                key={tutorial.id} 
+                className="transform hover:-translate-y-2 transition-all duration-300"
+                style={{ 
+                  animationDelay: `${index * 100}ms`,
+                  animation: 'fadeInUp 0.5s ease-out forwards'
+                }}
+              >
                 <TutorialCard
                   tutorial={tutorial}
                   isManageable={true}
@@ -179,10 +194,12 @@ function MyTutorials() {
           </div>
         )}
 
-        {editingTutorial ? (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold mb-4">Edit Tutorial</h2>
+        {editingTutorial && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-6">
+                Edit Tutorial
+              </h2>
               
               {updateError && (
                 <div className="mb-4 p-3 bg-red-100 text-red-600 rounded-lg">{updateError}</div>
@@ -298,7 +315,7 @@ function MyTutorials() {
               </form>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
