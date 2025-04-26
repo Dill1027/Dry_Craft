@@ -10,6 +10,14 @@ const axiosInstance = axios.create({
   timeout: 60000, // Increased to 1 minute for general requests
 });
 
+// Add helper function to get full URL
+axiosInstance.getFullUrl = (url) => {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:8081";
+  return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
+};
+
 // Update request interceptor
 axiosInstance.interceptors.request.use(
   async (config) => {
@@ -27,11 +35,8 @@ axiosInstance.interceptors.request.use(
         config.responseType = 'blob';
         config.headers = {
           ...config.headers,
-          Authorization: config.headers.Authorization, // Keep auth header
           Accept: '*/*',
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache',
-          'X-Requested-With': 'XMLHttpRequest'
+          'Cache-Control': 'no-cache'
         };
       }
 
@@ -41,7 +46,7 @@ axiosInstance.interceptors.request.use(
       return config;
     }
   },
-  (error) => Promise.reject(new Error(error.message))
+  (error) => Promise.reject(error)
 );
 
 // Update response interceptor with better error handling
@@ -115,20 +120,31 @@ axiosInstance.interact = (url, method = 'POST', data = null, params = null) => {
 
 // Add new method for media loading with optimized configuration
 axiosInstance.loadMedia = (mediaId, options = {}) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), options.timeout || 30000);
+
   return axiosInstance({
     url: `/api/media/${mediaId}`,
     method: 'GET',
     responseType: 'blob',
-    timeout: 30000, // 30 second timeout
-    headers: {
-      'Accept': 'image/*, video/*',
-      'Range': 'bytes=0-',
-      'Cache-Control': 'no-cache'
-    },
-    // Add retry configuration
-    retries: 3,
-    retryDelay: (retryCount) => Math.min(1000 * Math.pow(2, retryCount), 10000),
+    signal: controller.signal,
     ...options,
+    headers: {
+      ...options.headers,
+      'Accept': '*/*',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache'
+    },
+    onDownloadProgress: (progressEvent) => {
+      if (options.onDownloadProgress) {
+        options.onDownloadProgress(progressEvent);
+      }
+      // Reset timeout on progress
+      clearTimeout(timeoutId);
+      setTimeout(() => controller.abort(), options.timeout || 30000);
+    }
+  }).finally(() => {
+    clearTimeout(timeoutId);
   });
 };
 

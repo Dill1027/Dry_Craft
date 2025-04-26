@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { getAllProducts, deleteProduct, updateProduct } from '../../services/productService';
 import { Container, Row, Col, Card, Button, Form, Modal } from 'react-bootstrap';
+import { getFullUrl } from '../../utils/apiUtils';
 
 const ProductList = () => {
   const [products, setProducts] = useState([]);
@@ -65,7 +66,7 @@ const ProductList = () => {
               {product.imageUrl && (
                 <Card.Img
                   variant="top"
-                  src={`http://localhost:8080${product.imageUrl}`}
+                  src={getFullUrl(product.imageUrl)}
                   alt={product.name}
                   style={{ height: '200px', objectFit: 'cover' }}
                 />

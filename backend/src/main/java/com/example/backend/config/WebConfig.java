@@ -24,37 +24,26 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
+        Path uploadDir = Paths.get(uploadDirectory).toAbsolutePath().normalize();
+        String uploadPath = uploadDir.toString().replace("\\", "/");
+
+        // Add handler for uploads with /api prefix
+        registry.addResourceHandler("/api/uploads/**")
+                .addResourceLocations("file:" + uploadPath + "/")
+                .setCachePeriod(3600)
+                .setCacheControl(CacheControl.maxAge(1, TimeUnit.HOURS));
+
         // Add handler for static images
         registry.addResourceHandler("/images/**")
-                .addResourceLocations("classpath:/static/images/")
-                .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS));
-
-        // Existing resource handlers
-        Path uploadDir = Paths.get(uploadDirectory).toAbsolutePath().normalize();
-        registry.addResourceHandler("/api/uploads/**", "/api/media/**")
-                .addResourceLocations("file:" + uploadDir.toString() + "/")
-                .setCacheControl(CacheControl.noCache().mustRevalidate())
-                .resourceChain(true)
-                .addResolver(new PathResourceResolver() {
-                    @Override
-                    protected Resource getResource(@NonNull String resourcePath, @NonNull Resource location) throws IOException {
-                        Resource resource = location.createRelative(resourcePath);
-                        return resource.exists() && resource.isReadable() ? resource : null;
-                    }
-                });
+                .addResourceLocations("classpath:/static/images/");
     }
 
     @Override
     public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("http://localhost:3000", "http://localhost:3001")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD")
+                .allowedOrigins("http://localhost:3000")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
-                .exposedHeaders(HttpHeaders.CONTENT_DISPOSITION, HttpHeaders.CONTENT_LENGTH, 
-                              HttpHeaders.CONTENT_RANGE, HttpHeaders.ACCEPT_RANGES, 
-                              HttpHeaders.CONTENT_TYPE)
-                .allowCredentials(true)
-                .maxAge(3600);
+                .allowCredentials(true);
     }
-    
 }
