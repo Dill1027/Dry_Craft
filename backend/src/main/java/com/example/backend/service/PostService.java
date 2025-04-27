@@ -244,8 +244,8 @@ public class PostService {
                 .orElseThrow(() -> new IllegalArgumentException("Post not found"));
 
         User user = getUserDetails(userId);
-        String fullName = user.getFirstName() + " " + user.getLastName();
-        String commentText = fullName + ": " + content;
+        String authorName = user.getFirstName() + " " + user.getLastName();
+        String commentText = userId + "|" + authorName + ": " + content;
         
         post.getComments().add(commentText);
         post = postRepository.save(post);
@@ -261,9 +261,16 @@ public class PostService {
             throw new IllegalArgumentException("Invalid comment index");
         }
 
+        String existingComment = post.getComments().get(commentIndex);
+        String commentAuthorId = existingComment.split("\\|")[0];
+        
+        if (!commentAuthorId.equals(userId)) {
+            throw new IllegalArgumentException("You can only edit your own comments");
+        }
+
         User user = getUserDetails(userId);
-        String fullName = user.getFirstName() + " " + user.getLastName();
-        String commentText = fullName + ": " + content;
+        String authorName = user.getFirstName() + " " + user.getLastName();
+        String commentText = userId + "|" + authorName + ": " + content;
         
         List<String> comments = post.getComments();
         comments.set(commentIndex, commentText);
@@ -278,6 +285,13 @@ public class PostService {
 
         if (commentIndex < 0 || commentIndex >= post.getComments().size()) {
             throw new IllegalArgumentException("Invalid comment index");
+        }
+
+        String existingComment = post.getComments().get(commentIndex);
+        String commentAuthorId = existingComment.split("\\|")[0];
+        
+        if (!commentAuthorId.equals(userId)) {
+            throw new IllegalArgumentException("You can only delete your own comments");
         }
 
         List<String> comments = post.getComments();

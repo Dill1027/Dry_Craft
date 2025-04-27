@@ -7,6 +7,8 @@ public class Comment {
     private String userId;
     private String content;
     private LocalDateTime createdAt;
+    private String authorId;
+    private String authorName;
 
     // Getters and Setters
     public String getId() {
@@ -39,5 +41,21 @@ public class Comment {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getAuthorId() {
+        return authorId;
+    }
+
+    public void setAuthorId(String authorId) {
+        this.authorId = authorId;
+    }
+
+    public String getAuthorName() {
+        return authorName;
+    }
+
+    public void setAuthorName(String authorName) {
+        this.authorName = authorName;
     }
 }
