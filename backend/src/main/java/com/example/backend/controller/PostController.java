@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 import org.bson.types.ObjectId;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -154,6 +155,7 @@ public class PostController {
             long contentLength = file.getLength();
             long start = 0;
             long end = contentLength - 1;
+            long chunkSize = Math.min(1024 * 1024, contentLength); // 1MB chunks or file size
 
             // Parse range header if present
             if (rangeHeader != null) {
@@ -161,16 +163,16 @@ public class PostController {
                 start = Long.parseLong(ranges[0]);
                 if (ranges.length > 1) {
                     end = Long.parseLong(ranges[1]);
+                } else {
+                    end = Math.min(start + chunkSize - 1, contentLength - 1);
                 }
             }
 
-            long contentSize = end - start + 1;
             HttpHeaders headers = new HttpHeaders();
-            String contentType = determineContentType(file.getFilename(), file.getMetadata());
-            headers.setContentType(MediaType.parseMediaType(contentType));
             headers.add("Accept-Ranges", "bytes");
             headers.add("Content-Range", String.format("bytes %d-%d/%d", start, end, contentLength));
-            headers.setContentLength(contentSize);
+            headers.setContentLength(end - start + 1);
+            headers.setCacheControl(CacheControl.noCache());
 
             // Stream the content
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -179,8 +181,8 @@ public class PostController {
                 byte[] buffer = new byte[4096];
                 int bytesRead;
                 long totalRead = 0;
-                while (totalRead < contentSize && (bytesRead = downloadStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, (int) Math.min(bytesRead, contentSize - totalRead));
+                while (totalRead < (end - start + 1) && (bytesRead = downloadStream.read(buffer)) != -1) {
+                    outputStream.write(buffer, 0, (int) Math.min(bytesRead, (end - start + 1) - totalRead));
                     totalRead += bytesRead;
                 }
             }

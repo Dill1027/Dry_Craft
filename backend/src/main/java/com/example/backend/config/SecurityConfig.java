@@ -40,20 +40,17 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+            .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
-            .httpBasic(Customizer.withDefaults())
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/images/**").permitAll() // Allow access to static images
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/media/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/posts/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/users/*/profile-picture").permitAll()
+                .requestMatchers("/api/products/**", "/api/addproducts/**", "/api/productlist/**").permitAll()
+                .requestMatchers("/images/**", "/api/media/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/posts/**", "/api/users/*/profile-picture").permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .anyRequest().authenticated()
+                .anyRequest().permitAll()
             )
-            .sessionManagement(session -> session
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
@@ -78,19 +75,21 @@ public class SecurityConfig {
             "Content-Type",
             "Accept",
             "Origin",
-            "X-Requested-With",
-            "Access-Control-Request-Method",
-            "Access-Control-Request-Headers",
-            "Cache-Control",
-            "Pragma",
+            "If-Match",
+            "If-None-Match",
             "If-Modified-Since",
-            "If-None-Match"
+            "Cache-Control",
+            "Content-Range",
+            "Range",
+            "Pragma",
+            "Expires",
+            "X-Requested-With"
         ));
         configuration.setExposedHeaders(Arrays.asList(
-            "Authorization",
+            "Content-Range",
+            "Accept-Ranges",
             "Content-Disposition",
-            "Access-Control-Allow-Origin",
-            "Access-Control-Allow-Credentials"
+            "Content-Length"
         ));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

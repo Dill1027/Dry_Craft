@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from "react";
+import PropTypes from 'prop-types';
 import axiosInstance from "../utils/axios";
+import { getFullUrl, handleImageError, getMediaUrl } from '../utils/mediaUtils';
 
-function Post({ post, onPostDeleted, onPostUpdated }) {
+const PLACEHOLDER_IMAGE = '/images/placeholder.png';
+
+function Post({ 
+  post, 
+  onPostDeleted = () => {}, 
+  onPostUpdated = () => {} 
+}) {
   const [showMenu, setShowMenu] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(post.content);
@@ -27,76 +35,37 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
     return new Date(dateString).toLocaleString();
   };
 
-  const getFullUrl = (url) => {
-    if (!url) return "";
-    if (url.startsWith("http://") || url.startsWith("https://")) return url;
-    return `${window.location.protocol}//${window.location.hostname}:8081${url}`;
-  };
-
-  const handleImageError = (url) => {
-    console.error("Image failed to load:", url);
-    // Return fallback image URL
-    return `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/image-placeholder.png`;
-  };
-
-  const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
-    try {
-      const response = await axiosInstance.loadMedia(mediaId, {
-        onDownloadProgress: (progressEvent) => {
-          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-          console.log(`Loading media ${mediaId}: ${percentCompleted}%`);
-        }
-      });
-
-      if (!response.data || response.data.size === 0) {
-        throw new Error('Empty response received');
-      }
-
-      return URL.createObjectURL(new Blob([response.data], { 
-        type: response.headers['content-type'] 
-      }));
-
-    } catch (error) {
-      console.error(`Error loading media ${mediaId}:`, error);
-      
-      if (originalUrl) {
-        return getFullUrl(originalUrl);
-      }
-      throw error;
-    }
-  };
-
   const loadMedia = async () => {
     try {
       setVideoError(false);
       const newMediaUrls = {};
 
-      // Load video first if exists
       if (post.videoUrl) {
         const mediaId = post.videoUrl.split("/").pop();
         try {
           const videoUrl = await getMediaUrl(mediaId, post.videoUrl);
-          if (videoUrl) newMediaUrls.video = videoUrl;
+          if (videoUrl) {
+            newMediaUrls.video = videoUrl;
+          } else {
+            setVideoError(true);
+          }
         } catch (error) {
           console.error('Error loading video:', error);
           setVideoError(true);
         }
       }
 
-      // Load images in batches
       if (post.imageUrls?.length) {
-        const batchSize = 2;
-        for (let i = 0; i < post.imageUrls.length; i += batchSize) {
-          const batch = post.imageUrls.slice(i, i + batchSize);
-          await Promise.all(batch.map(async (url) => {
-            const mediaId = url.split("/").pop();
-            try {
-              const mediaUrl = await getMediaUrl(mediaId, url);
-              if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
-            } catch (error) {
-              console.error(`Error loading image ${mediaId}:`, error);
-            }
-          }));
+        for (const url of post.imageUrls) {
+          const mediaId = url.split("/").pop();
+          try {
+            const mediaUrl = await getMediaUrl(mediaId, url);
+            if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
+          } catch (error) {
+            console.error(`Error loading image ${mediaId}:`, error);
+            // Use placeholder for failed images
+            newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
+          }
         }
       }
 
@@ -384,13 +353,14 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
                       setVideoError(false);
                       loadMedia();
                     }}
-                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
                   >
-                    Retry
+                    Retry Loading
                   </button>
                 </div>
               ) : (
                 <video
+                  key={mediaUrls.video} // Add key to force remount on URL change
                   src={mediaUrls.video || getFullUrl(post.videoUrl)}
                   className="max-h-96 w-full object-contain"
                   controls
@@ -414,7 +384,10 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
                 alt={`Post image ${index + 1}`}
                 className="max-h-96 object-contain mb-4 w-full"
                 onError={(e) => {
-                  e.target.src = handleImageError(url);
+                  const fallbackUrl = handleImageError(url);
+                  if (fallbackUrl) {
+                    e.target.src = fallbackUrl;
+                  }
                 }}
               />
             );
@@ -556,5 +529,24 @@ function Post({ post, onPostDeleted, onPostUpdated }) {
     </div>
   );
 }
+
+Post.propTypes = {
+  post: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    userId: PropTypes.string.isRequired,
+    userName: PropTypes.string,
+    userProfilePicture: PropTypes.string,
+    content: PropTypes.string,
+    videoUrl: PropTypes.string,
+    imageUrls: PropTypes.arrayOf(PropTypes.string),
+    likes: PropTypes.number,
+    comments: PropTypes.arrayOf(PropTypes.string),
+    createdAt: PropTypes.string,
+    likeCount: PropTypes.number,
+    isLiked: PropTypes.bool
+  }).isRequired,
+  onPostDeleted: PropTypes.func,
+  onPostUpdated: PropTypes.func
+};
 
 export default Post;
