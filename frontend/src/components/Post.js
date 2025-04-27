@@ -26,6 +26,8 @@ function Post({
   const [showAllComments, setShowAllComments] = useState(false);
   const [comments, setComments] = useState(post.comments || []);
   const [newComment, setNewComment] = useState("");
+  const [editingCommentIndex, setEditingCommentIndex] = useState(null);
+  const [editCommentContent, setEditCommentContent] = useState('');
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -198,6 +200,54 @@ function Post({
     } catch (error) {
       console.error('Error adding comment:', error);
       setError("Failed to add comment");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleEditComment = (index, content) => {
+    const commentContent = content.split(": ")[1];
+    setEditingCommentIndex(index);
+    setEditCommentContent(commentContent);
+  };
+
+  const handleUpdateComment = async (index) => {
+    if (!editCommentContent.trim()) return;
+    
+    try {
+      const response = await axiosInstance.put(
+        `/api/posts/${post.id}/comments/${index}`,
+        null,
+        {
+          params: {
+            userId: user.id,
+            content: editCommentContent.trim()
+          }
+        }
+      );
+      setComments(response.data.comments);
+      setEditingCommentIndex(null);
+      setEditCommentContent('');
+    } catch (error) {
+      console.error('Error updating comment:', error);
+      setError("Failed to update comment");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const handleDeleteComment = async (index) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+
+    try {
+      const response = await axiosInstance.delete(
+        `/api/posts/${post.id}/comments/${index}`,
+        {
+          params: { userId: user.id }
+        }
+      );
+      setComments(response.data.comments);
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      setError("Failed to delete comment");
       setTimeout(() => setError(null), 3000);
     }
   };
@@ -443,48 +493,71 @@ function Post({
                 {visibleComments.map((comment, index) => (
                   <div key={index} className="p-3 bg-gray-50 rounded-lg mb-2">
                     <div className="flex justify-between items-start">
-                      <p className="text-sm text-gray-600">{comment}</p>
-                      {user && user.id === post.userId && (
-                        <div className="flex gap-2 ml-2">
+                      {editingCommentIndex === index ? (
+                        <div className="flex-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={editCommentContent}
+                            onChange={(e) => setEditCommentContent(e.target.value)}
+                            className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
                           <button
-                            onClick={() => console.log(`Edit comment ${index}`)}
-                            className="text-blue-500 hover:text-blue-600 text-sm"
+                            onClick={() => handleUpdateComment(index)}
+                            className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                              />
-                            </svg>
+                            Save
                           </button>
                           <button
-                            onClick={() => console.log(`Delete comment ${index}`)}
-                            className="text-red-500 hover:text-red-600 text-sm"
+                            onClick={() => setEditingCommentIndex(null)}
+                            className="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600"
                           >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="w-4 h-4"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round" 
-                                strokeWidth="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
+                            Cancel
                           </button>
                         </div>
+                      ) : (
+                        <>
+                          <p className="text-sm text-gray-600">{comment}</p>
+                          <div className="flex gap-2 ml-2">
+                            <button
+                              onClick={() => handleEditComment(index, comment)}
+                              className="text-blue-500 hover:text-blue-600 text-sm"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="2"
+                                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteComment(index)}
+                              className="text-red-500 hover:text-red-600 text-sm"
+                            >
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="w-4 h-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round" 
+                                  strokeWidth="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                              </svg>
+                            </button>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>

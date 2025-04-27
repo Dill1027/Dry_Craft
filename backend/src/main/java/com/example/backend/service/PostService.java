@@ -252,4 +252,38 @@ public class PostService {
         
         return convertToPostResponse(post);
     }
+
+    public PostResponse updateComment(String postId, int commentIndex, String userId, String content) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        if (commentIndex < 0 || commentIndex >= post.getComments().size()) {
+            throw new IllegalArgumentException("Invalid comment index");
+        }
+
+        User user = getUserDetails(userId);
+        String fullName = user.getFirstName() + " " + user.getLastName();
+        String commentText = fullName + ": " + content;
+        
+        List<String> comments = post.getComments();
+        comments.set(commentIndex, commentText);
+        post = postRepository.save(post);
+        
+        return convertToPostResponse(post);
+    }
+
+    public PostResponse deleteComment(String postId, int commentIndex, String userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        if (commentIndex < 0 || commentIndex >= post.getComments().size()) {
+            throw new IllegalArgumentException("Invalid comment index");
+        }
+
+        List<String> comments = post.getComments();
+        comments.remove(commentIndex);
+        post = postRepository.save(post);
+        
+        return convertToPostResponse(post);
+    }
 }

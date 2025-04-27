@@ -136,6 +136,35 @@ public class PostController {
         }
     }
 
+    @PutMapping("/posts/{postId}/comments/{commentIndex}")
+    public ResponseEntity<PostResponse> updateComment(
+            @PathVariable String postId,
+            @PathVariable int commentIndex,
+            @RequestParam String userId,
+            @RequestParam String content) {
+        try {
+            PostResponse response = postService.updateComment(postId, commentIndex, userId, content);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error updating comment: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/posts/{postId}/comments/{commentIndex}")
+    public ResponseEntity<PostResponse> deleteComment(
+            @PathVariable String postId,
+            @PathVariable int commentIndex,
+            @RequestParam String userId) {
+        try {
+            PostResponse response = postService.deleteComment(postId, commentIndex, userId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error deleting comment: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @GetMapping("/media/{mediaId}")
     public ResponseEntity<Resource> getMedia(
             @PathVariable String mediaId,
