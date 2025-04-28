@@ -59,26 +59,21 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (error) => {
-    // Convert to proper Error object
-    const errorMessage = error.response?.data?.message || error.message || 'Network error';
-    if (error.code === "ERR_NETWORK") {
-      console.error("Network Error - Backend may be down:", error);
-      // Add retry logic for media requests
-      if (error.config?.url?.includes("/api/media/")) {
-        const retryConfig = {
-          ...error.config,
-          retry: (error.config.retry || 0) + 1,
-        };
-        if (retryConfig.retry <= 3) {
-          return new Promise(resolve => setTimeout(resolve, 1000))
-            .then(() => axiosInstance.request(retryConfig));
-        }
+    let errorMessage = error.message || "An error occurred";
+    
+    if (error.response) {
+      // Server responded with error status
+      errorMessage = error.response.data?.message || errorMessage;
+      
+      // Don't redirect for 'User not found' errors on public endpoints
+      if (error.response.status === 403 && 
+          !error.config.url.endsWith('/posts') && 
+          !error.config.url.includes('/media/')) {
+        localStorage.removeItem("user");
+        window.location.href = "/login";
       }
-    } else if (error.response?.status === 403) {
-      console.error("Authentication error:", error);
-      localStorage.removeItem("user");
-      window.location.href = "/login";
     }
+    
     return Promise.reject(new Error(errorMessage));
   }
 );

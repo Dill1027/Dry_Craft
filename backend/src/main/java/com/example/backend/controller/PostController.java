@@ -75,7 +75,12 @@ public class PostController {
 
     @GetMapping("/posts")
     public ResponseEntity<List<PostResponse>> getAllPosts() {
-        return ResponseEntity.ok(postService.getAllPosts());
+        try {
+            return ResponseEntity.ok(postService.getAllPosts());
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error fetching posts: " + e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping("/posts/user/{userId}")

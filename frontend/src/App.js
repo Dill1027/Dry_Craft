@@ -12,6 +12,8 @@ import TutorialForm from "./pages/TutorialForm";
 import TutorialDetail from "./pages/TutorialDetail";
 import MyTutorials from "./pages/MyTutorials";
 import TutorialEdit from "./pages/TutorialEdit";
+import UserPhotos from "./pages/UserPhotos";
+import UserVideos from "./pages/UserVideos";
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/photos" element={<UserPhotos />} />
+            <Route path="/profile/videos" element={<UserVideos />} /> {/* Add this line */}
             {/* Product Routes */}
             <Route path="/products" element={<Products />} />
             <Route path="/addproducts" element={<AddProduct />} />

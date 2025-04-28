@@ -59,15 +59,17 @@ function Post({
       if (post.videoUrl) {
         const mediaId = post.videoUrl.split("/").pop();
         try {
-          const videoUrl = await getMediaUrl(mediaId, post.videoUrl);
+          const videoUrl = await getMediaUrl(mediaId, post.videoUrl, {
+            retries: 2,
+            retryDelay: 1000,
+            timeout: 20000
+          });
           if (videoUrl) {
             newMediaUrls.video = videoUrl;
-          } else {
-            setVideoError(true);
           }
         } catch (error) {
           console.error('Error loading video:', error);
-          setVideoError(true);
+          newMediaUrls.video = getFullUrl(post.videoUrl);
         }
       }
 
@@ -84,9 +86,53 @@ function Post({
         }
       }
 
-      setMediaUrls(prevUrls => ({...prevUrls, ...newMediaUrls}));
+      setMediaUrls(prevUrls => {
+        Object.values(prevUrls).forEach(url => {
+          if (url?.startsWith('blob:')) {
+            URL.revokeObjectURL(url);
+          }
+        });
+        return {...prevUrls, ...newMediaUrls};
+      });
     } catch (error) {
       console.error('Error in loadMedia:', error);
+      setError("Failed to load media content");
+    }
+  };
+
+  const handleVideoError = async (e) => {
+    console.error("Video loading error:", e);
+    
+    try {
+      const video = e.target;
+      
+      const directUrl = getFullUrl(post.videoUrl);
+      if (video.src !== directUrl) {
+        console.log("Attempting direct URL:", directUrl);
+        video.src = directUrl;
+        return;
+      }
+
+      if (post.videoUrl) {
+        const mediaId = post.videoUrl.split("/").pop();
+        const videoUrl = await getMediaUrl(mediaId, post.videoUrl, {
+          retries: 3,
+          retryDelay: 1000,
+          timeout: 30000,
+          forceRefresh: true
+        });
+        
+        if (videoUrl && video.src !== videoUrl) {
+          console.log("Attempting media service URL:", videoUrl);
+          video.src = videoUrl;
+          return;
+        }
+      }
+
+      throw new Error("Failed to load video after all recovery attempts");
+    } catch (error) {
+      console.error("Video recovery failed:", error);
+      setVideoError(true);
     }
   };
 
@@ -181,7 +227,6 @@ function Post({
       setIsLiked(response.data.isLiked);
       setLikeCount(response.data.likeCount);
       
-      // Add a temporary visual feedback
       if (response.data.isLiked) {
         setIsHoveringLike(true);
         setTimeout(() => setIsHoveringLike(false), 1000);
@@ -278,19 +323,17 @@ function Post({
 
   const getCommentContent = (comment) => {
     const parts = comment.split('|');
-    return parts[1]; // Returns "authorName: content"
+    return parts[1];
   };
 
   return (
     <div className="bg-white rounded-xl shadow-md mb-4 p-6 relative transition-all duration-300 hover:shadow-lg">
-      {/* Error Notification with Animation */}
       {error && (
         <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-2 animate-fade-in-down">
           {error}
         </div>
       )}
       
-      {/* Post Header */}
       <div className="flex items-center mb-4">
         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center mr-3 overflow-hidden shadow-inner">
           {post.userProfilePicture ? (
@@ -315,7 +358,6 @@ function Post({
           <p className="text-xs text-gray-500">{formatDate(post.createdAt)}</p>
         </div>
         
-        {/* Post Menu (Edit/Delete) */}
         {user && user.id === post.userId && (
           <div className="relative">
             <button
@@ -339,7 +381,6 @@ function Post({
               </svg>
             </button>
             
-            {/* Dropdown Menu with Animation */}
             {showMenu && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 overflow-hidden animate-fade-in-up">
                 <button
@@ -369,7 +410,6 @@ function Post({
         )}
       </div>
 
-      {/* Edit Mode */}
       {isEditing ? (
         <form onSubmit={handleUpdateSubmit} className="mt-4">
           <textarea
@@ -381,7 +421,6 @@ function Post({
             placeholder="What's on your mind?"
           />
           
-          {/* Image Previews */}
           {editPreviewUrls.length > 0 && (
             <div className="mb-4 grid grid-cols-3 gap-2">
               {editPreviewUrls.map((url, index) => (
@@ -413,7 +452,6 @@ function Post({
             </div>
           )}
           
-          {/* Edit Controls */}
           <div className="flex justify-between items-center">
             <div className="flex space-x-2">
               <input
@@ -471,10 +509,8 @@ function Post({
         </form>
       ) : (
         <>
-          {/* Post Content */}
           <p className="mb-4 text-gray-800 whitespace-pre-line">{post.content}</p>
 
-          {/* Video Content */}
           {post.videoUrl && (
             <div className="mb-4 rounded-xl overflow-hidden bg-gray-100">
               {videoError ? (
@@ -494,25 +530,23 @@ function Post({
                   </button>
                 </div>
               ) : (
-                <div className="relative pt-[56.25%]"> {/* 16:9 Aspect Ratio */}
+                <div className="relative pt-[56.25%]">
                   <video
-                    key={mediaUrls.video}
+                    key={mediaUrls.video || post.videoUrl}
                     src={mediaUrls.video || getFullUrl(post.videoUrl)}
-                    className="absolute top-0 left-0 w-full h-full object-cover"
+                    className="absolute top-0 left-0 w-full h-full object-contain bg-black"
                     controls
                     playsInline
+                    controlsList="nodownload"
                     preload="metadata"
-                    onError={(e) => {
-                      console.error("Video loading error:", e);
-                      setVideoError(true);
-                    }}
+                    onError={handleVideoError}
+                    crossOrigin="anonymous"
                   />
                 </div>
               )}
             </div>
           )}
 
-          {/* Image Gallery */}
           {post.imageUrls?.length > 0 && (
             <div className={`mb-4 rounded-xl overflow-hidden ${post.imageUrls.length > 1 ? 'grid grid-cols-2 gap-1' : ''}`}>
               {post.imageUrls.map((url, index) => {
@@ -539,7 +573,6 @@ function Post({
             </div>
           )}
 
-          {/* Post Actions */}
           <div className="flex flex-col border-t border-gray-100 mt-4 pt-4">
             <div className="flex items-center justify-between mb-4">
               <button
@@ -598,7 +631,6 @@ function Post({
               </button>
             </div>
 
-            {/* Comments Section with Animation */}
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showComments ? 'max-h-screen' : 'max-h-0'}`}>
               <div className="space-y-3 pt-2">
                 {visibleComments.map((comment, index) => (
@@ -684,7 +716,6 @@ function Post({
                   </div>
                 ))}
                 
-                {/* Show More Comments Button */}
                 {comments.length > 2 && (
                   <button
                     onClick={handleCommentClick}
@@ -708,7 +739,6 @@ function Post({
                   </button>
                 )}
                 
-                {/* Add Comment Form */}
                 <div className="flex gap-2 mt-3">
                   <div className="flex-1 relative">
                     <input

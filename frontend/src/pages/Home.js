@@ -11,12 +11,13 @@ function Home() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
+  const defaultAvatarUrl = "/images/default-avatar.png";
 
   useEffect(() => {
     fetchPosts();
   }, []);
 
-  const fetchPosts = async () => {
+  const fetchPosts = async (retryCount = 0) => {
     try {
       setError(null);
       setLoading(true);
@@ -24,12 +25,18 @@ function Home() {
       setPosts(response.data);
     } catch (err) {
       console.error("Error fetching posts:", err);
+      if (retryCount < 3 && err.message === "User not found") {
+        // Wait 1 second before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return fetchPosts(retryCount + 1);
+      }
+
       if (err.code === "ERR_NETWORK") {
-        setError("Unable to connect to server. Please try again later.");
+        setError("Unable to connect to server. Please check your internet connection.");
       } else if (err.response?.status === 403) {
         navigate("/login");
       } else {
-        setError("An error occurred while fetching posts.");
+        setError("Something went wrong while loading posts. Please try again later.");
       }
     } finally {
       setLoading(false);
@@ -168,10 +175,22 @@ function Home() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-            Welcome, {user?.firstName || 'User'}
-          </h2>
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
+            <div 
+              onClick={() => navigate("/profile")}
+              className="w-12 h-12 rounded-full overflow-hidden cursor-pointer hover:ring-2 hover:ring-purple-500 transition-all duration-200 shadow-md"
+            >
+              <img
+                src={user?.profilePicture ? (user.profilePicture.startsWith('/api/') ? user.profilePicture : `/api/media/${user.profilePicture}`) : defaultAvatarUrl}
+                alt="Profile"
+                className="w-full h-full object-cover"
+              />
+            </div>
+            <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+              Welcome, {user?.firstName || 'User'}
+            </h2>
+          </div>
+          <div className="flex gap-4 items-center">
             <button
               onClick={() => navigate("/tutorials/create")}
               className="px-4 py-2 text-green-600 border-2 border-green-600 rounded-lg hover:bg-green-50 
@@ -188,8 +207,7 @@ function Home() {
                   strokeLinejoin="round"
                   strokeWidth="2"
                   d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />                cd frontend
-                npm install react-confetti
+                />
               </svg>
               Create Tutorial
             </button>
