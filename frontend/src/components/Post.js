@@ -28,13 +28,27 @@ function Post({
   const [newComment, setNewComment] = useState("");
   const [editingCommentIndex, setEditingCommentIndex] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState('');
+  const [isHoveringLike, setIsHoveringLike] = useState(false);
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
   const visibleComments = showAllComments ? comments : comments.slice(0, 2);
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleString();
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
   };
 
   const loadMedia = async () => {
@@ -65,7 +79,6 @@ function Post({
             if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
           } catch (error) {
             console.error(`Error loading image ${mediaId}:`, error);
-            // Use placeholder for failed images
             newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
           }
         }
@@ -167,6 +180,12 @@ function Post({
       
       setIsLiked(response.data.isLiked);
       setLikeCount(response.data.likeCount);
+      
+      // Add a temporary visual feedback
+      if (response.data.isLiked) {
+        setIsHoveringLike(true);
+        setTimeout(() => setIsHoveringLike(false), 1000);
+      }
     } catch (error) {
       console.error('Error toggling like:', error);
       setError(error.code === 'ECONNABORTED' 
@@ -263,62 +282,22 @@ function Post({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md mb-4 p-4 relative">
+    <div className="bg-white rounded-xl shadow-md mb-4 p-6 relative transition-all duration-300 hover:shadow-lg">
+      {/* Error Notification with Animation */}
       {error && (
-        <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-2">
+        <div className="absolute top-0 left-0 w-full bg-red-500 text-white text-center py-2 animate-fade-in-down">
           {error}
         </div>
       )}
-      {user && user.id === post.userId && (
-        <div className="absolute top-4 right-4">
-          <button
-            onClick={() => setShowMenu(!showMenu)}
-            className="p-1 hover:bg-gray-100 rounded-full"
-            disabled={deleting || updating}
-          >
-            <svg
-              className="w-6 h-6 text-gray-500"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
-              />
-            </svg>
-          </button>
-          {showMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-50">
-              <button
-                onClick={handleEdit}
-                className="w-full text-left px-4 py-2 text-sm text-blue-600 hover:bg-gray-100"
-              >
-                Edit Post
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className={`w-full text-left px-4 py-2 text-sm ${
-                  deleting ? "text-gray-400" : "text-red-600 hover:bg-gray-100"
-                }`}
-              >
-                {deleting ? "Deleting..." : "Delete Post"}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
+      
+      {/* Post Header */}
       <div className="flex items-center mb-4">
-        <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center mr-3 overflow-hidden shadow-inner">
           {post.userProfilePicture ? (
             <img
               src={post.userProfilePicture.startsWith('/api/') ? post.userProfilePicture : `/api/media/${post.userProfilePicture}`}
               alt={post.userName}
-              className="w-full h-full rounded-full object-cover"
+              className="w-full h-full rounded-full object-cover transition-transform duration-300 hover:scale-105"
               onError={(e) => {
                 console.log('Failed to load profile picture:', e.target.src);
                 e.target.onerror = null;
@@ -326,59 +305,142 @@ function Post({
               }}
             />
           ) : (
-            <span className="text-lg font-semibold">
+            <span className="text-xl font-semibold text-gray-600">
               {post.userName?.charAt(0)}
             </span>
           )}
         </div>
-        <div>
-          <h3 className="font-semibold">{post.userName || "Unknown User"}</h3>
-          <p className="text-sm text-gray-500">{formatDate(post.createdAt)}</p>
+        <div className="flex-1">
+          <h3 className="font-semibold text-gray-800">{post.userName || "Unknown User"}</h3>
+          <p className="text-xs text-gray-500">{formatDate(post.createdAt)}</p>
         </div>
+        
+        {/* Post Menu (Edit/Delete) */}
+        {user && user.id === post.userId && (
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 rounded-full transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-200"
+              disabled={deleting || updating}
+              aria-label="Post options"
+            >
+              <svg
+                className="w-6 h-6 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"
+                />
+              </svg>
+            </button>
+            
+            {/* Dropdown Menu with Animation */}
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-xl z-50 overflow-hidden animate-fade-in-up">
+                <button
+                  onClick={handleEdit}
+                  className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-colors duration-200 flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Post
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className={`w-full text-left px-4 py-3 text-sm transition-colors duration-200 flex items-center ${
+                    deleting ? "text-gray-400 bg-gray-50" : "text-red-600 hover:bg-red-50"
+                  }`}
+                >
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {deleting ? "Deleting..." : "Delete Post"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* Edit Mode */}
       {isEditing ? (
         <form onSubmit={handleUpdateSubmit} className="mt-4">
           <textarea
-            className="w-full p-3 border rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="3"
+            className="w-full p-4 border border-gray-200 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 resize-none"
+            rows="4"
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
             disabled={updating}
+            placeholder="What's on your mind?"
           />
+          
+          {/* Image Previews */}
           {editPreviewUrls.length > 0 && (
-            <div className="mb-4 flex flex-wrap gap-2">
+            <div className="mb-4 grid grid-cols-3 gap-2">
               {editPreviewUrls.map((url, index) => (
-                <img
-                  key={index}
-                  src={url}
-                  alt={`Preview ${index}`}
-                  className="w-24 h-24 object-cover rounded-lg"
-                />
+                <div key={index} className="relative group rounded-lg overflow-hidden aspect-square">
+                  <img
+                    src={url}
+                    alt={`Preview ${index}`}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newUrls = [...editPreviewUrls];
+                      const newImages = [...editImages];
+                      newUrls.splice(index, 1);
+                      newImages.splice(index, 1);
+                      setEditPreviewUrls(newUrls);
+                      setEditImages(newImages);
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               ))}
             </div>
           )}
+          
+          {/* Edit Controls */}
           <div className="flex justify-between items-center">
-            <input
-              type="file"
-              multiple
-              accept="image/*"
-              onChange={handleImageChange}
-              className="hidden"
-              id="edit-image-input"
-              disabled={updating}
-            />
-            <label
-              htmlFor="edit-image-input"
-              className="cursor-pointer text-blue-500 hover:text-blue-600"
-            >
-              Add Images
-            </label>
-            <div className="space-x-2">
+            <div className="flex space-x-2">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+                id="edit-image-input"
+                disabled={updating}
+              />
+              <label
+                htmlFor="edit-image-input"
+                className="cursor-pointer flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Add Images
+              </label>
+            </div>
+            
+            <div className="flex space-x-2">
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
                 disabled={updating}
               >
                 Cancel
@@ -388,98 +450,136 @@ function Post({
                 disabled={
                   updating || (!editContent.trim() && editImages.length === 0)
                 }
-                className={`px-4 py-2 rounded text-white ${
+                className={`px-4 py-2 rounded-lg text-white transition-colors duration-200 ${
                   updating || (!editContent.trim() && editImages.length === 0)
                     ? "bg-gray-400 cursor-not-allowed"
-                    : "bg-blue-500 hover:bg-blue-600"
+                    : "bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-md"
                 }`}
               >
-                {updating ? "Updating..." : "Save Changes"}
+                {updating ? (
+                  <span className="flex items-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Updating...
+                  </span>
+                ) : "Save Changes"}
               </button>
             </div>
           </div>
         </form>
       ) : (
         <>
-          <p className="mb-4">{post.content}</p>
+          {/* Post Content */}
+          <p className="mb-4 text-gray-800 whitespace-pre-line">{post.content}</p>
 
+          {/* Video Content */}
           {post.videoUrl && (
-            <div className="mb-4">
+            <div className="mb-4 rounded-xl overflow-hidden bg-gray-100">
               {videoError ? (
-                <div className="bg-gray-100 p-4 rounded-lg text-center">
-                  <p className="text-gray-600">Video failed to load</p>
+                <div className="p-6 rounded-lg text-center">
+                  <svg className="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="mt-2 text-gray-600">Video failed to load</p>
                   <button 
                     onClick={() => {
                       setVideoError(false);
                       loadMedia();
                     }}
-                    className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+                    className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-200"
                   >
                     Retry Loading
                   </button>
                 </div>
               ) : (
-                <video
-                  key={mediaUrls.video} // Add key to force remount on URL change
-                  src={mediaUrls.video || getFullUrl(post.videoUrl)}
-                  className="max-h-96 w-full object-contain"
-                  controls
-                  playsInline
-                  preload="metadata"
-                  onError={(e) => {
-                    console.error("Video loading error:", e);
-                    setVideoError(true);
-                  }}
-                />
+                <div className="relative pt-[56.25%]"> {/* 16:9 Aspect Ratio */}
+                  <video
+                    key={mediaUrls.video}
+                    src={mediaUrls.video || getFullUrl(post.videoUrl)}
+                    className="absolute top-0 left-0 w-full h-full object-cover"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    onError={(e) => {
+                      console.error("Video loading error:", e);
+                      setVideoError(true);
+                    }}
+                  />
+                </div>
               )}
             </div>
           )}
 
-          {post.imageUrls?.map((url, index) => {
-            const mediaId = url.split("/").pop();
-            return (
-              <img
-                key={index}
-                src={mediaUrls[mediaId] || getFullUrl(url)}
-                alt={`Post image ${index + 1}`}
-                className="max-h-96 object-contain mb-4 w-full"
-                onError={(e) => {
-                  const fallbackUrl = handleImageError(url);
-                  if (fallbackUrl) {
-                    e.target.src = fallbackUrl;
-                  }
-                }}
-              />
-            );
-          })}
+          {/* Image Gallery */}
+          {post.imageUrls?.length > 0 && (
+            <div className={`mb-4 rounded-xl overflow-hidden ${post.imageUrls.length > 1 ? 'grid grid-cols-2 gap-1' : ''}`}>
+              {post.imageUrls.map((url, index) => {
+                const mediaId = url.split("/").pop();
+                return (
+                  <div key={index} className="relative group">
+                    <img
+                      src={mediaUrls[mediaId] || getFullUrl(url)}
+                      alt={`Post image ${index + 1}`}
+                      className="w-full h-full max-h-96 object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        const fallbackUrl = handleImageError(url);
+                        if (fallbackUrl) {
+                          e.target.src = fallbackUrl;
+                        }
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-4">
+                      <span className="text-white text-sm">Image {index + 1} of {post.imageUrls.length}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-          <div className="flex flex-col border-t mt-4 pt-4">
-            <div className="flex items-center space-x-6 mb-4">
+          {/* Post Actions */}
+          <div className="flex flex-col border-t border-gray-100 mt-4 pt-4">
+            <div className="flex items-center justify-between mb-4">
               <button
                 onClick={handleLike}
-                className={`flex items-center space-x-1 ${
-                  isLiked ? "text-blue-500" : "text-gray-500"
+                onMouseEnter={() => setIsHoveringLike(true)}
+                onMouseLeave={() => setIsHoveringLike(false)}
+                className={`flex items-center space-x-1 transition-all duration-300 ${
+                  isLiked ? "text-blue-500" : "text-gray-500 hover:text-blue-500"
                 }`}
               >
-                <svg
-                  className="w-5 h-5"
-                  fill={isLiked ? "currentColor" : "none"}
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                  />
-                </svg>
-                <span>{likeCount}</span>
+                <div className="relative">
+                  <svg
+                    className={`w-6 h-6 ${isHoveringLike ? 'animate-bounce' : ''}`}
+                    fill={isLiked ? "currentColor" : "none"}
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={isLiked ? "0" : "2"}
+                      d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
+                    />
+                  </svg>
+                  {isLiked && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full opacity-20 animate-ping"></div>
+                    </div>
+                  )}
+                </div>
+                <span className={`font-medium ${isLiked ? 'text-blue-500' : 'text-gray-600'}`}>
+                  {likeCount}
+                </span>
               </button>
               
               <button 
                 onClick={() => setShowComments(!showComments)}
-                className="flex items-center space-x-2 text-gray-500 hover:text-blue-500"
+                className={`flex items-center space-x-1 transition-colors duration-300 ${
+                  showComments ? "text-blue-500" : "text-gray-500 hover:text-blue-500"
+                }`}
               >
                 <svg
                   className="w-6 h-6"
@@ -494,14 +594,18 @@ function Post({
                     d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
                   />
                 </svg>
-                <span>{comments.length}</span>
+                <span className="font-medium">{comments.length}</span>
               </button>
             </div>
 
-            {showComments && (
-              <div className="mt-4 space-y-3">
+            {/* Comments Section with Animation */}
+            <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showComments ? 'max-h-screen' : 'max-h-0'}`}>
+              <div className="space-y-3 pt-2">
                 {visibleComments.map((comment, index) => (
-                  <div key={index} className="p-3 bg-gray-50 rounded-lg mb-2">
+                  <div 
+                    key={index} 
+                    className="p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100"
+                  >
                     <div className="flex justify-between items-start">
                       {editingCommentIndex === index ? (
                         <div className="flex-1 flex gap-2">
@@ -509,29 +613,33 @@ function Post({
                             type="text"
                             value={editCommentContent}
                             onChange={(e) => setEditCommentContent(e.target.value)}
-                            className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="flex-1 p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            autoFocus
                           />
                           <button
                             onClick={() => handleUpdateComment(index)}
-                            className="px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                            className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
                           >
                             Save
                           </button>
                           <button
                             onClick={() => setEditingCommentIndex(null)}
-                            className="px-3 py-1 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200"
                           >
                             Cancel
                           </button>
                         </div>
                       ) : (
                         <>
-                          <p className="text-sm text-gray-600">{getCommentContent(comment)}</p>
+                          <div className="flex-1">
+                            <p className="text-sm text-gray-600">{getCommentContent(comment)}</p>
+                          </div>
                           {isCommentAuthor(comment) && (
                             <div className="flex gap-2 ml-2">
                               <button
                                 onClick={() => handleEditComment(index, comment)}
-                                className="text-blue-500 hover:text-blue-600 text-sm"
+                                className="text-gray-500 hover:text-blue-500 text-sm transition-colors duration-200"
+                                aria-label="Edit comment"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -550,7 +658,8 @@ function Post({
                               </button>
                               <button
                                 onClick={() => handleDeleteComment(index)}
-                                className="text-red-500 hover:text-red-600 text-sm"
+                                className="text-gray-500 hover:text-red-500 text-sm transition-colors duration-200"
+                                aria-label="Delete comment"
                               >
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
@@ -575,39 +684,59 @@ function Post({
                   </div>
                 ))}
                 
+                {/* Show More Comments Button */}
                 {comments.length > 2 && (
                   <button
                     onClick={handleCommentClick}
-                    className="text-sm text-blue-500 hover:text-blue-600 mb-4"
+                    className="text-sm text-blue-500 hover:text-blue-600 mb-2 transition-colors duration-200 flex items-center justify-center w-full py-2 rounded-lg hover:bg-blue-50"
                   >
-                    {showAllComments 
-                      ? "Show less comments" 
-                      : `Show ${comments.length - 2} more comments`}
+                    {showAllComments ? (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
+                        </svg>
+                        Show less comments
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                        Show {comments.length - 2} more comments
+                      </>
+                    )}
                   </button>
                 )}
                 
+                {/* Add Comment Form */}
                 <div className="flex gap-2 mt-3">
-                  <input
-                    type="text"
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <button
-                    onClick={handleAddComment}
-                    disabled={!newComment.trim()}
-                    className={`px-4 py-2 rounded text-white ${
-                      !newComment.trim() 
-                        ? "bg-gray-300 cursor-not-allowed" 
-                        : "bg-blue-500 hover:bg-blue-600"
-                    }`}
-                  >
-                    Comment
-                  </button>
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="w-full p-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-4 pr-12 transition-all duration-200"
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+                    />
+                    <button
+                      onClick={handleAddComment}
+                      disabled={!newComment.trim()}
+                      className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded-full ${
+                        !newComment.trim() 
+                          ? "text-gray-400 cursor-not-allowed" 
+                          : "text-blue-500 hover:bg-blue-100 transition-colors duration-200"
+                      }`}
+                      aria-label="Post comment"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </>
       )}

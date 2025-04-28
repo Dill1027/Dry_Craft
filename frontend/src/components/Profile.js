@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
+import Post from './Post'; // Add this import
 
 function Profile() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
@@ -10,6 +11,9 @@ function Profile() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState('');
 
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -70,6 +74,34 @@ function Profile() {
       }
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    fetchUserPosts();
+  }, [user?.id]);
+
+  const fetchUserPosts = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setPostsLoading(true);
+      const response = await axiosInstance.get(`/api/posts/user/${user.id}`);
+      setPosts(response.data);
+    } catch (err) {
+      setPostsError(err.response?.data?.message || 'Failed to fetch posts');
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const handlePostDeleted = (postId) => {
+    setPosts(posts.filter(post => post.id !== postId));
+  };
+
+  const handlePostUpdated = (updatedPost) => {
+    setPosts(posts.map(post => 
+      post.id === updatedPost.id ? updatedPost : post
+    ));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -219,6 +251,38 @@ function Profile() {
                 )}
               </button>
             </form>
+
+            {/* Add Posts Section */}
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">My Posts</h2>
+              
+              {postsLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : postsError ? (
+                <div className="text-center py-8 text-red-600">{postsError}</div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-8 text-gray-600">
+                  <p>You haven't posted anything yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {posts.map((post) => (
+                    <div 
+                      key={post.id}
+                      className="transform transition-all duration-300 hover:scale-[1.01]"
+                    >
+                      <Post
+                        post={post}
+                        onPostDeleted={handlePostDeleted}
+                        onPostUpdated={handlePostUpdated}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
