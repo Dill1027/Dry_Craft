@@ -20,8 +20,12 @@ function Post({
   const [mediaUrls, setMediaUrls] = useState({});
   const [error, setError] = useState(null);
   const [videoError, setVideoError] = useState(false);
-  const [isLiked, setIsLiked] = useState(post.isLiked);
-  const [likeCount, setLikeCount] = useState(post.likeCount);
+  const [currentReaction, setCurrentReaction] = useState(post.userReaction || null);
+  const [reactionCounts, setReactionCounts] = useState({
+    LIKE: post.reactionCounts?.LIKE || 0, 
+    HEART: post.reactionCounts?.HEART || 0
+  });
+  const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showAllComments, setShowAllComments] = useState(false);
   const [comments, setComments] = useState(post.comments || []);
@@ -156,24 +160,31 @@ function Post({
     }
   };
 
-  const handleLike = async () => {
+  const handleReaction = async (reactionType) => {
     try {
-      const response = await axiosInstance.interact(
-        `/api/posts/${post.id}/like`,
-        'POST',
-        null,
-        { userId: user.id }
+      const response = await axiosInstance.post(
+        `/api/posts/${post.id}/reactions`,
+        {
+          userId: user.id,
+          reactionType: reactionType
+        }
       );
       
-      setIsLiked(response.data.isLiked);
-      setLikeCount(response.data.likeCount);
+      setCurrentReaction(response.data.userReaction);
+      setReactionCounts(response.data.reactionCounts);
+      setShowReactionMenu(false);
     } catch (error) {
-      console.error('Error toggling like:', error);
-      setError(error.code === 'ECONNABORTED' 
-        ? "Request timed out. Please try again." 
-        : "Failed to update like status"
-      );
+      console.error('Error setting reaction:', error);
+      setError("Failed to update reaction");
       setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const getReactionEmoji = (type) => {
+    switch (type) {
+      case 'LIKE': return '👍';
+      case 'HEART': return '❤️';
+      default: return '👍';
     }
   };
 
@@ -455,27 +466,42 @@ function Post({
 
           <div className="flex flex-col border-t mt-4 pt-4">
             <div className="flex items-center space-x-6 mb-4">
-              <button
-                onClick={handleLike}
-                className={`flex items-center space-x-1 ${
-                  isLiked ? "text-blue-500" : "text-gray-500"
-                }`}
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill={isLiked ? "currentColor" : "none"}
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
+              <div className="relative">
+                <button
+                  onMouseEnter={() => setShowReactionMenu(true)}
+                  onClick={() => currentReaction ? handleReaction(null) : setShowReactionMenu(true)}
+                  className={`flex items-center space-x-1 ${
+                    currentReaction ? 'text-blue-500' : 'text-gray-500'
+                  }`}
                 >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                  />
-                </svg>
-                <span>{likeCount}</span>
-              </button>
+                  {currentReaction ? (
+                    <span className="text-xl">{getReactionEmoji(currentReaction)}</span>
+                  ) : (
+                    <span className="text-gray-500">👍</span>
+                  )}
+                  <span>
+                    {Object.values(reactionCounts || {}).reduce((a, b) => a + b, 0)}
+                  </span>
+                </button>
+                
+                {showReactionMenu && (
+                  <div 
+                    className="absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg px-2 py-1 flex space-x-2"
+                    onMouseEnter={() => setShowReactionMenu(true)}
+                    onMouseLeave={() => setShowReactionMenu(false)}
+                  >
+                    {['LIKE', 'HEART'].map(type => (
+                      <button
+                        key={type}
+                        onClick={() => handleReaction(type)}
+                        className="hover:transform hover:scale-125 transition-transform p-1"
+                      >
+                        {getReactionEmoji(type)} 
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               
               <button 
                 onClick={() => setShowComments(!showComments)}
@@ -628,7 +654,9 @@ Post.propTypes = {
     comments: PropTypes.arrayOf(PropTypes.string),
     createdAt: PropTypes.string,
     likeCount: PropTypes.number,
-    isLiked: PropTypes.bool
+    isLiked: PropTypes.bool,
+    userReaction: PropTypes.string,
+    reactionCounts: PropTypes.object
   }).isRequired,
   onPostDeleted: PropTypes.func,
   onPostUpdated: PropTypes.func

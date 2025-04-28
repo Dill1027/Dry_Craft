@@ -2,6 +2,7 @@ package com.example.backend.controller;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -161,6 +163,22 @@ public class PostController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error deleting comment: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/posts/{postId}/reactions")
+    public ResponseEntity<PostResponse> handleReaction(
+            @PathVariable String postId,
+            @RequestBody Map<String, String> payload) {
+        try {
+            String userId = payload.get("userId");
+            String reactionType = payload.get("reactionType");
+            
+            PostResponse response = postService.handleReaction(postId, userId, reactionType);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error handling reaction: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }

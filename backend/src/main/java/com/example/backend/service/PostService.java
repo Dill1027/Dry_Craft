@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.backend.model.Post;
 import com.example.backend.model.PostResponse;
+import com.example.backend.model.Reaction;
 import com.example.backend.model.User;
 import com.example.backend.repository.PostRepository;
 import com.example.backend.repository.UserRepository;
@@ -299,5 +300,26 @@ public class PostService {
         post = postRepository.save(post);
         
         return convertToPostResponse(post);
+    }
+
+    public PostResponse handleReaction(String postId, String userId, String reactionType) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        if (reactionType == null) {
+            post.getUserReactions().remove(userId);
+        } else {
+            try {
+                Reaction reaction = Reaction.valueOf(reactionType.toUpperCase());
+                post.getUserReactions().put(userId, reaction);
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Invalid reaction type");
+            }
+        }
+
+        post.updateReactionCounts();
+        post = postRepository.save(post);
+        
+        return new PostResponse(post, userId);
     }
 }

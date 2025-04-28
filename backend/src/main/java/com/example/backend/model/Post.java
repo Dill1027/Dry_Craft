@@ -2,8 +2,10 @@ package com.example.backend.model;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.springframework.data.annotation.Id;
@@ -21,6 +23,8 @@ public class Post {
     private Set<String> likedByUsers = new HashSet<>(); // Replace the likes field
     private List<String> comments = new ArrayList<>();
     private LocalDateTime createdAt = LocalDateTime.now();
+    private Map<String, Reaction> userReactions = new HashMap<>();
+    private Map<String, Integer> reactionCounts = new HashMap<>();
 
     public Post() {
     }
@@ -127,5 +131,32 @@ public class Post {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public Map<String, Reaction> getUserReactions() {
+        return userReactions;
+    }
+
+    public void setUserReactions(Map<String, Reaction> userReactions) {
+        this.userReactions = userReactions;
+    }
+
+    public Map<String, Integer> getReactionCounts() {
+        return reactionCounts;
+    }
+
+    public void setReactionCounts(Map<String, Integer> reactionCounts) {
+        this.reactionCounts = reactionCounts;
+    }
+
+    public Reaction getUserReaction(String userId) {
+        return userReactions.get(userId);
+    }
+
+    public void updateReactionCounts() {
+        reactionCounts.clear();
+        for (Reaction reaction : userReactions.values()) {
+            reactionCounts.merge(reaction.toString(), 1, Integer::sum);
+        }
     }
 }
