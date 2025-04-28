@@ -29,8 +29,14 @@ function MyTutorials() {
 
   const fetchMyTutorials = async () => {
     try {
-      const response = await axiosInstance.get(`/api/tutorials?userId=${user.id}`);
-      setTutorials(response.data);
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      const response = await axiosInstance.get('/api/tutorials');
+      // Filter tutorials to show only user's tutorials
+      const userTutorials = response.data.filter(tutorial => tutorial.userId === user.id);
+      setTutorials(userTutorials);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load tutorials');
     } finally {
@@ -109,7 +115,7 @@ function MyTutorials() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/tutorials')}
           className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
                    transition-all duration-300 hover:gap-3"
         >
@@ -121,7 +127,7 @@ function MyTutorials() {
           >
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
           </svg>
-          <span className="font-medium">Go Back</span>
+          <span className="font-medium">Back to Tutorials</span>
         </button>
 
         <div className="flex justify-between items-center mb-12">

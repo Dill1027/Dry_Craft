@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
+import Post from './Post'; // Add this import
 
 function Profile() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
@@ -10,6 +11,9 @@ function Profile() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(true);
+  const [postsError, setPostsError] = useState('');
 
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -70,6 +74,34 @@ function Profile() {
       }
     };
   }, [previewUrl]);
+
+  useEffect(() => {
+    fetchUserPosts();
+  }, [user?.id]);
+
+  const fetchUserPosts = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setPostsLoading(true);
+      const response = await axiosInstance.get(`/api/posts/user/${user.id}`);
+      setPosts(response.data);
+    } catch (err) {
+      setPostsError(err.response?.data?.message || 'Failed to fetch posts');
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  const handlePostDeleted = (postId) => {
+    setPosts(posts.filter(post => post.id !== postId));
+  };
+
+  const handlePostUpdated = (updatedPost) => {
+    setPosts(posts.map(post => 
+      post.id === updatedPost.id ? updatedPost : post
+    ));
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -156,6 +188,29 @@ function Profile() {
                   <span className="px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">Member</span>
                   <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">Verified</span>
                 </div>
+                
+                {/* Add Media Navigation Buttons */}
+                <div className="flex gap-4 mt-6">
+                  <button
+                    onClick={() => navigate('/profile/photos')}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    My Photos
+                  </button>
+                  
+                  <button
+                    onClick={() => navigate('/profile/videos')}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    My Videos
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -219,11 +274,43 @@ function Profile() {
                 )}
               </button>
             </form>
+
+            {/* Add Posts Section */}
+            <div className="mt-12">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">My Posts</h2>
+              
+              {postsLoading ? (
+                <div className="flex justify-center items-center py-8">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+              ) : postsError ? (
+                <div className="text-center py-8 text-red-600">{postsError}</div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-8 text-gray-600">
+                  <p>You haven't posted anything yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {posts.map((post) => (
+                    <div 
+                      key={post.id}
+                      className="transform transition-all duration-300 hover:scale-[1.01]"
+                    >
+                      <Post
+                        post={post}
+                        onPostDeleted={handlePostDeleted}
+                        onPostUpdated={handlePostUpdated}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      <style jsx global>{`
+      <style>{`
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           20%, 60% { transform: translateX(-5px); }
@@ -232,7 +319,6 @@ function Profile() {
         @keyframes fadeIn {
           from { opacity: 0; }
           to { opacity: 1; }
-        }
       `}</style>
     </div>
   );

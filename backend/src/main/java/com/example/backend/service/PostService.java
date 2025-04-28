@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.logging.Logger;
 
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,7 @@ public class PostService {
     private final UserRepository userRepository;
     private final MongoTemplate mongoTemplate;
     private final GridFSBucket gridFSBucket;
+    private final Logger logger = Logger.getLogger(PostService.class.getName());
 
     private static final int MAX_VIDEO_SIZE_MB = 15; // 15MB
     private static final List<String> ALLOWED_VIDEO_TYPES = List.of("video/mp4", "video/quicktime");
@@ -54,9 +56,13 @@ public class PostService {
 
     private PostResponse convertToPostResponse(Post post) {
         PostResponse response = new PostResponse(post);
-        User user = getUserDetails(post.getUserId());
-        response.setUserName(user.getFirstName() + " " + user.getLastName());
-        response.setUserProfilePicture(user.getProfilePicture());
+        try {
+            User user = getUserDetails(post.getUserId());
+            response.setUserName(user.getFirstName() + " " + user.getLastName());
+            response.setUserProfilePicture(user.getProfilePicture());
+        } catch (Exception e) {
+            response.setUserName("Unknown User");
+        }
         response.setLikeCount(post.getLikeCount());
         String currentUserId = getCurrentUserId();
         if (currentUserId != null) {
@@ -145,10 +151,15 @@ public class PostService {
     }
 
     public List<PostResponse> getAllPosts() {
-        List<Post> posts = postRepository.findAllByOrderByCreatedAtDesc();
-        return posts.stream()
-                .map(this::convertToPostResponse)
-                .collect(Collectors.toList());
+        try {
+            List<Post> posts = postRepository.findAllByOrderByCreatedAtDesc();
+            return posts.stream()
+                    .map(this::convertToPostResponse)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.warning("Error retrieving posts: " + e.getMessage());
+            return new ArrayList<>();
+        }
     }
 
     public List<PostResponse> getUserPosts(String userId) {

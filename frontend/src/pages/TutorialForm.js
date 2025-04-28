@@ -189,7 +189,7 @@ function TutorialForm() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       <div className="max-w-4xl mx-auto animate-fadeIn">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/')}
           className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
                    transition-all duration-300 hover:gap-3"
         >
