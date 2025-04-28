@@ -29,8 +29,14 @@ function MyTutorials() {
 
   const fetchMyTutorials = async () => {
     try {
-      const response = await axiosInstance.get(`/api/tutorials?userId=${user.id}`);
-      setTutorials(response.data);
+      if (!user) {
+        navigate('/login');
+        return;
+      }
+      const response = await axiosInstance.get('/api/tutorials');
+      // Filter tutorials to show only user's tutorials
+      const userTutorials = response.data.filter(tutorial => tutorial.userId === user.id);
+      setTutorials(userTutorials);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to load tutorials');
     } finally {
