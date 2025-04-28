@@ -442,6 +442,21 @@
   animation: bounce 0.5s;
 }
 
+@keyframes slideIn {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+}
+
 /* Media player styles */
 .media-player {
   @apply relative w-full bg-black rounded-lg overflow-hidden;
