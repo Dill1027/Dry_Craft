@@ -45,11 +45,15 @@ module.exports = {
         'slide-up': 'slideUp 0.5s ease-out',
         'scale': 'scale 0.3s ease-in-out',
         'fade': 'fade 0.3s ease-in-out',
+        fadeIn: 'fadeIn 0.5s ease-out forwards',
+        shake: 'shake 0.5s ease-in-out',
+        shimmer: 'shimmer 2s infinite linear',
+        'fadeInUp': 'fadeInUp 0.5s ease-out forwards',
       },
       keyframes: {
         fadeIn: {
-          '0%': { opacity: '0' },
-          '100%': { opacity: '1' },
+          '0%': { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
         },
         slideIn: {
           '0%': { transform: 'translateY(-10px)', opacity: '0' },
@@ -74,6 +78,25 @@ module.exports = {
         fade: {
           '0%': { opacity: 0 },
           '100%': { opacity: 1 },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '25%': { transform: 'translateX(-5px)' },
+          '75%': { transform: 'translateX(5px)' },
+        },
+        shimmer: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        fadeInUp: {
+          '0%': { 
+            opacity: '0',
+            transform: 'translateY(20px)'
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0)'
+          },
         },
       },
       backgroundImage: {
