@@ -142,6 +142,9 @@ public class Post {
     }
 
     public Map<String, Integer> getReactionCounts() {
+        if (reactionCounts == null) {
+            reactionCounts = new HashMap<>();
+        }
         return reactionCounts;
     }
 
@@ -154,9 +157,12 @@ public class Post {
     }
 
     public void updateReactionCounts() {
-        reactionCounts.clear();
-        for (Reaction reaction : userReactions.values()) {
-            reactionCounts.merge(reaction.toString(), 1, Integer::sum);
+        getReactionCounts().clear();
+        if (userReactions != null) {
+            for (Reaction reaction : userReactions.values()) {
+                String reactionType = reaction.toString();
+                reactionCounts.merge(reactionType, 1, Integer::sum);
+            }
         }
     }
 }

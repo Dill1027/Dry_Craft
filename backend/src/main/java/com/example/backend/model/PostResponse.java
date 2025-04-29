@@ -2,7 +2,9 @@ package com.example.backend.model;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PostResponse {
     private String id;
@@ -18,6 +20,8 @@ public class PostResponse {
     private LocalDateTime createdAt;
     private int likeCount;
     private boolean isLiked;
+    private Reaction userReaction;
+    private Map<String, Integer> reactionCounts = new HashMap<>();
 
     public PostResponse() {
     }
@@ -35,15 +39,9 @@ public class PostResponse {
     }
 
     public PostResponse(Post post, String currentUserId) {
-        this.id = post.getId();
-        this.userId = post.getUserId();
-        this.content = post.getContent();
-        this.videoUrl = post.getVideoUrl();
-        this.imageUrls = post.getImageUrls();
-        this.mediaIds = post.getMediaIds();
-        this.likes = post.getLikes();
-        this.comments = post.getComments();
-        this.createdAt = post.getCreatedAt();
+        this(post); // Call the other constructor first
+        this.userReaction = post.getUserReaction(currentUserId);
+        this.reactionCounts = post.getReactionCounts();
         this.likeCount = post.getLikeCount();
         this.isLiked = post.isLikedByUser(currentUserId);
     }
@@ -152,5 +150,21 @@ public class PostResponse {
 
     public void setIsLiked(boolean isLiked) {
         this.isLiked = isLiked;
+    }
+
+    public Reaction getUserReaction() {
+        return userReaction;
+    }
+
+    public void setUserReaction(Reaction userReaction) {
+        this.userReaction = userReaction;
+    }
+
+    public Map<String, Integer> getReactionCounts() {
+        return reactionCounts;
+    }
+
+    public void setReactionCounts(Map<String, Integer> reactionCounts) {
+        this.reactionCounts = reactionCounts != null ? reactionCounts : new HashMap<>();
     }
 }

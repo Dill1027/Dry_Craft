@@ -3,6 +3,7 @@ package com.example.backend.service;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.logging.Logger;
@@ -317,14 +318,20 @@ public class PostService {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("Post not found"));
 
-        if (reactionType == null) {
-            post.getUserReactions().remove(userId);
-        } else {
+        if (post.getUserReactions() == null) {
+            post.setUserReactions(new HashMap<>());
+        }
+        
+        // Remove existing reaction if present
+        post.getUserReactions().remove(userId);
+
+        // Add new reaction if specified
+        if (reactionType != null) {
             try {
                 Reaction reaction = Reaction.valueOf(reactionType.toUpperCase());
                 post.getUserReactions().put(userId, reaction);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException("Invalid reaction type");
+                throw new IllegalArgumentException("Invalid reaction type: must be LIKE or HEART");
             }
         }
 

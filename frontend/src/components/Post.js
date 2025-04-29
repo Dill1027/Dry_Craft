@@ -20,19 +20,18 @@ function Post({
   const [mediaUrls, setMediaUrls] = useState({});
   const [error, setError] = useState(null);
   const [videoError, setVideoError] = useState(false);
-  const [currentReaction, setCurrentReaction] = useState(post.userReaction || null);
-  const [reactionCounts, setReactionCounts] = useState({
-    LIKE: post.reactionCounts?.LIKE || 0, 
-    HEART: post.reactionCounts?.HEART || 0
-  });
-  const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showAllComments, setShowAllComments] = useState(false);
   const [comments, setComments] = useState(post.comments || []);
   const [newComment, setNewComment] = useState("");
   const [editingCommentIndex, setEditingCommentIndex] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState('');
-  const [isHoveringLike, setIsHoveringLike] = useState(false);
+  const [currentReaction, setCurrentReaction] = useState(post?.userReaction || null);
+  const [reactionCounts, setReactionCounts] = useState(() => {
+    return post?.reactionCounts || { LIKE: 0, HEART: 0 };
+  });
+  const [showReactionMenu, setShowReactionMenu] = useState(false);
+  const [isHoveringReaction, setIsHoveringReaction] = useState(false);
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -159,6 +158,12 @@ function Post({
     };
   }, [post.videoUrl, post.imageUrls]);
 
+  useEffect(() => {
+    if (post?.reactionCounts) {
+      setReactionCounts(post.reactionCounts);
+    }
+  }, [post?.reactionCounts]);
+
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
 
@@ -216,44 +221,6 @@ function Post({
       setTimeout(() => setError(null), 3000);
     } finally {
       setUpdating(false);
-    }
-  };
-
-  const handleReaction = async (reactionType) => {
-    try {
-      const response = await axiosInstance.post(
-        `/api/posts/${post.id}/reactions`,
-        {
-          userId: user.id,
-          reactionType: reactionType
-        }
-      );
-      
-<<<<<<< HEAD
-      setCurrentReaction(response.data.userReaction);
-      setReactionCounts(response.data.reactionCounts);
-      setShowReactionMenu(false);
-=======
-      setIsLiked(response.data.isLiked);
-      setLikeCount(response.data.likeCount);
-      
-      if (response.data.isLiked) {
-        setIsHoveringLike(true);
-        setTimeout(() => setIsHoveringLike(false), 1000);
-      }
->>>>>>> 4df1a10d735afdcaa6a2d706b9472006e9c54a7d
-    } catch (error) {
-      console.error('Error setting reaction:', error);
-      setError("Failed to update reaction");
-      setTimeout(() => setError(null), 3000);
-    }
-  };
-
-  const getReactionEmoji = (type) => {
-    switch (type) {
-      case 'LIKE': return '👍';
-      case 'HEART': return '❤️';
-      default: return '👍';
     }
   };
 
@@ -340,6 +307,77 @@ function Post({
   const getCommentContent = (comment) => {
     const parts = comment.split('|');
     return parts[1];
+  };
+
+  const handleReaction = async (reactionType) => {
+    if (!user) {
+      setError("Please login to react to posts");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const oldReaction = currentReaction;
+    const oldCounts = { ...reactionCounts };
+
+    try {
+      // Toggle reaction if clicking the same type
+      const newReactionType = currentReaction === reactionType ? null : reactionType;
+      
+      // Optimistic update
+      setCurrentReaction(newReactionType);
+      const updatedCounts = { ...reactionCounts };
+      
+      // Remove old reaction count
+      if (oldReaction) {
+        updatedCounts[oldReaction] = Math.max(0, (updatedCounts[oldReaction] || 0) - 1);
+      }
+      
+      // Add new reaction count
+      if (newReactionType) {
+        updatedCounts[newReactionType] = (updatedCounts[newReactionType] || 0) + 1;
+        setIsHoveringReaction(true);
+      }
+      setReactionCounts(updatedCounts);
+
+      // Make API call
+      const response = await axiosInstance.post(`/api/posts/${post.id}/reactions`, {
+        userId: user.id,
+        reactionType: newReactionType
+      });
+
+      // Update with server response
+      if (response.data) {
+        setCurrentReaction(response.data.userReaction);
+        setReactionCounts(response.data.reactionCounts);
+      }
+    } catch (error) {
+      // Revert changes on error
+      setCurrentReaction(oldReaction);
+      setReactionCounts(oldCounts);
+      setError("Failed to update reaction");
+      setTimeout(() => setError(null), 3000);
+    } finally {
+      // Cleanup
+      if (isHoveringReaction) {
+        setTimeout(() => setIsHoveringReaction(false), 1000);
+      }
+      setShowReactionMenu(false);
+    }
+  };
+
+  const getReactionEmoji = (type) => {
+    switch (type) {
+      case 'LIKE': return '👍';
+      case 'HEART': return '❤️';
+      default: return '👍';
+    }
+  };
+
+  const getTotalReactions = () => {
+    if (!reactionCounts || typeof reactionCounts !== 'object') {
+      return 0;
+    }
+    return Object.values(reactionCounts).reduce((sum, count) => sum + (count || 0), 0);
   };
 
   return (
@@ -589,99 +627,67 @@ function Post({
             </div>
           )}
 
-<<<<<<< HEAD
           <div className="flex flex-col border-t mt-4 pt-4">
             <div className="flex items-center space-x-6 mb-4">
               <div className="relative">
                 <button
+                  className={`reaction-button flex items-center space-x-2 ${
+                    currentReaction ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
+                  } transition-colors duration-200`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleReaction(currentReaction ? null : 'LIKE');
+                  }}
                   onMouseEnter={() => setShowReactionMenu(true)}
-                  onClick={() => currentReaction ? handleReaction(null) : setShowReactionMenu(true)}
-                  className={`flex items-center space-x-1 ${
-                    currentReaction ? 'text-blue-500' : 'text-gray-500'
-                  }`}
                 >
-                  {currentReaction ? (
-                    <span className="text-xl">{getReactionEmoji(currentReaction)}</span>
-                  ) : (
-                    <span className="text-gray-500">👍</span>
-                  )}
-                  <span>
-                    {Object.values(reactionCounts || {}).reduce((a, b) => a + b, 0)}
+                  <span className="text-xl relative">
+                    {currentReaction ? getReactionEmoji(currentReaction) : '👍'}
+                    {isHoveringReaction && currentReaction && (
+                      <span className="absolute -top-2 -right-2 animate-ping">
+                        {getReactionEmoji(currentReaction)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-sm font-medium">
+                    {getTotalReactions()}
                   </span>
                 </button>
-                
+
                 {showReactionMenu && (
                   <div 
-                    className="absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg px-2 py-1 flex space-x-2"
+                    className="reaction-menu absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg px-2 py-1 flex space-x-2 z-10"
                     onMouseEnter={() => setShowReactionMenu(true)}
                     onMouseLeave={() => setShowReactionMenu(false)}
                   >
                     {['LIKE', 'HEART'].map(type => (
                       <button
                         key={type}
-                        onClick={() => handleReaction(type)}
-                        className="hover:transform hover:scale-125 transition-transform p-1"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleReaction(type);
+                        }}
+                        className={`p-2 hover:bg-gray-100 rounded-full transition-all duration-200 transform hover:scale-110 ${
+                          currentReaction === type ? 'text-blue-500 scale-110' : ''
+                        }`}
                       >
-                        {getReactionEmoji(type)} 
+                        {getReactionEmoji(type)}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
-=======
-          <div className="flex flex-col border-t border-gray-100 mt-4 pt-4">
-            <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={handleLike}
-                onMouseEnter={() => setIsHoveringLike(true)}
-                onMouseLeave={() => setIsHoveringLike(false)}
-                className={`flex items-center space-x-1 transition-all duration-300 ${
-                  isLiked ? "text-blue-500" : "text-gray-500 hover:text-blue-500"
-                }`}
-              >
-                <div className="relative">
-                  <svg
-                    className={`w-6 h-6 ${isHoveringLike ? 'animate-bounce' : ''}`}
-                    fill={isLiked ? "currentColor" : "none"}
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={isLiked ? "0" : "2"}
-                      d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5"
-                    />
-                  </svg>
-                  {isLiked && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-6 h-6 bg-blue-500 rounded-full opacity-20 animate-ping"></div>
-                    </div>
-                  )}
-                </div>
-                <span className={`font-medium ${isLiked ? 'text-blue-500' : 'text-gray-600'}`}>
-                  {likeCount}
-                </span>
-              </button>
->>>>>>> 4df1a10d735afdcaa6a2d706b9472006e9c54a7d
-              
+
               <button 
                 onClick={() => setShowComments(!showComments)}
                 className={`flex items-center space-x-1 transition-colors duration-300 ${
                   showComments ? "text-blue-500" : "text-gray-500 hover:text-blue-500"
                 }`}
               >
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" 
                   />
                 </svg>
                 <span className="font-medium">{comments.length}</span>
