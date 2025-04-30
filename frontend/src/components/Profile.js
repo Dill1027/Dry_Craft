@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
-import Post from './Post'; // Add this import
+import Post from './Post';
 
 function Profile() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
@@ -189,7 +189,7 @@ function Profile() {
                   <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">Verified</span>
                 </div>
                 
-                {/* Add Media Navigation Buttons */}
+                {/* Navigation Buttons */}
                 <div className="flex gap-4 mt-6">
                   <button
                     onClick={() => navigate('/profile/photos')}
@@ -209,6 +209,16 @@ function Profile() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                     </svg>
                     My Videos
+                  </button>
+
+                  <button
+                    onClick={() => navigate('/products')}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-md hover:shadow-lg"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    My Products
                   </button>
                 </div>
               </div>
@@ -275,7 +285,7 @@ function Profile() {
               </button>
             </form>
 
-            {/* Add Posts Section */}
+            {/* Posts Section */}
             <div className="mt-12">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">My Posts</h2>
               

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
+import { getFullUrl } from '../utils/apiUtils';
 
 const categories = [
   {
@@ -43,10 +44,13 @@ const categories = [
 function Marketplace() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // Add error state
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const navigate = useNavigate();
+
+  const defaultProductImage = '/images/placeholder-image.jpg';
 
   useEffect(() => {
     fetchProducts();
@@ -55,13 +59,22 @@ function Marketplace() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      setError(null); // Reset error state
       const response = await axiosInstance.get('/api/products');
       setProducts(response.data);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setError(error.message === 'Network Error' 
+        ? 'Unable to connect to server. Please check your connection and try again.'
+        : 'Failed to load products. Please try again later.');
+      setProducts([]); // Reset products on error
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    fetchProducts();
   };
 
   const filteredProducts = products.filter(product => {
@@ -89,120 +102,155 @@ function Marketplace() {
           </button>
         </div>
 
-        {/* Search and Filter Section */}
-        <div className="mb-8 space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 
-                           focus:ring-purple-500 focus:border-transparent"
-                />
-                <svg
-                  className="absolute right-3 top-2.5 h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        {/* Error State */}
+        {error && (
+          <div className="text-center py-12">
+            <div className="bg-white p-6 rounded-lg shadow-md inline-block">
+              <div className="text-red-500 mb-4">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-            </div>
-            <div className="relative">
+              <p className="text-gray-800 mb-4">{error}</p>
               <button
-                onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
-                className="px-4 py-2 bg-white border border-gray-300 rounded-lg flex items-center gap-2 
-                         hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                onClick={handleRetry}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 
+                         transition-colors flex items-center gap-2 mx-auto"
               >
-                {selectedCategory || 'All Categories'}
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
+                Retry
               </button>
-              
-              {showCategoryDropdown && (
-                <div className="absolute z-10 w-72 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg">
-                  <div className="p-2">
-                    <button
-                      onClick={() => {
-                        setSelectedCategory('');
-                        setShowCategoryDropdown(false);
-                      }}
-                      className="w-full px-4 py-2 text-left hover:bg-purple-50 rounded-md"
+            </div>
+          </div>
+        )}
+
+        {/* Search and Filter Section */}
+        {!error && (
+          <>
+            <div className="mb-8 space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search products..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 
+                               focus:ring-purple-500 focus:border-transparent"
+                    />
+                    <svg
+                      className="absolute right-3 top-2.5 h-5 w-5 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      All Categories
-                    </button>
-                    {categories.map((category) => (
-                      <button
-                        key={category.name}
-                        onClick={() => {
-                          setSelectedCategory(category.name);
-                          setShowCategoryDropdown(false);
-                        }}
-                        className="w-full px-4 py-2 text-left hover:bg-purple-50 rounded-md"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span>{category.icon}</span>
-                          <div>
-                            <div className="font-medium">{category.name}</div>
-                            <div className="text-sm text-gray-500">{category.description}</div>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
                   </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Products Grid */}
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map((product) => (
-              <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                <div className="w-full h-48">
-                  {product.imageUrls && product.imageUrls.length > 0 ? (
-                    <img
-                      src={product.imageUrls[0]}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        e.target.src = '/placeholder-image.jpg';
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-gray-400">No image available</span>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                    className="px-4 py-2 bg-white border border-gray-300 rounded-lg flex items-center gap-2 
+                             hover:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    {selectedCategory || 'All Categories'}
+                    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                  
+                  {showCategoryDropdown && (
+                    <div className="absolute z-10 w-72 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg">
+                      <div className="p-2">
+                        <button
+                          onClick={() => {
+                            setSelectedCategory('');
+                            setShowCategoryDropdown(false);
+                          }}
+                          className="w-full px-4 py-2 text-left hover:bg-purple-50 rounded-md"
+                        >
+                          All Categories
+                        </button>
+                        {categories.map((category) => (
+                          <button
+                            key={category.name}
+                            onClick={() => {
+                              setSelectedCategory(category.name);
+                              setShowCategoryDropdown(false);
+                            }}
+                            className="w-full px-4 py-2 text-left hover:bg-purple-50 rounded-md"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span>{category.icon}</span>
+                              <div>
+                                <div className="font-medium">{category.name}</div>
+                                <div className="text-sm text-gray-500">{category.description}</div>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
-                  <p className="text-gray-600 text-sm mt-1">{product.description}</p>
-                  <div className="mt-4 flex justify-between items-center">
-                    <span className="text-purple-600 font-bold">${product.price}</span>
-                    <button 
-                      onClick={() => navigate(`/product/${product.id}`)}
-                      className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </div>
               </div>
-            ))}
-          </div>
+            </div>
+
+            {/* Products Grid */}
+            {loading ? (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {filteredProducts.map((product) => (
+                  <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="w-full h-48">
+                      {product.imageUrls && product.imageUrls.length > 0 ? (
+                        <img
+                          src={getFullUrl(product.imageUrls[0], 'product')}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.onerror = null;  // Prevent infinite loop
+                            e.target.src = defaultProductImage;
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          <img 
+                            src={defaultProductImage}
+                            alt="No image available"
+                            className="w-16 h-16 object-contain opacity-50"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
+                      <p className="text-gray-600 text-sm mt-1">{product.description}</p>
+                      <div className="mt-4 flex justify-between items-center">
+                        <span className="text-purple-600 font-bold">${product.price}</span>
+                        <button 
+                          onClick={() => navigate(`/product/${product.id}`)}
+                          className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
