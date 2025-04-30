@@ -7,6 +7,7 @@ import Profile from './components/Profile';
 import Products from './pages/seller/Products';
 import AddProduct from "./pages/seller/AddProduct";
 import ProductList from "./pages/seller/ProductList";
+import Marketplace from "./pages/Marketplace";
 import Tutorials from "./pages/Tutorials";
 import TutorialForm from "./pages/TutorialForm";
 import TutorialDetail from "./pages/TutorialDetail";
@@ -31,6 +32,7 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/addproducts" element={<AddProduct />} />
             <Route path="/productlist" element={<ProductList />} />
+            <Route path="/marketplace" element={<Marketplace />} />
             {/* Tutorial Routes */}
             <Route path="/tutorials" element={<Tutorials />} />
             <Route path="/my-tutorials" element={<MyTutorials />} />
