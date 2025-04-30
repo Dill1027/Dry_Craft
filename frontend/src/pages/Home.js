@@ -212,6 +212,26 @@ function Home() {
               Create Tutorial
             </button>
             <button
+              onClick={() => navigate("/addproducts")}
+              className="px-4 py-2 text-purple-600 border-2 border-purple-600 rounded-lg hover:bg-purple-50 
+                       transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
+                />
+              </svg>
+              Marketplace
+            </button>
+            <button
               onClick={() => navigate("/tutorials")}
               className="px-4 py-2 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-50 
                        transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
