@@ -2,6 +2,16 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { getFullUrl } from '../../utils/apiUtils';
 
+const categories = {
+  'Greeting Cards': ['Birthday Card', 'Wedding Card', 'Thank You Card', 'Holiday Card'],
+  'Scrapbooking': ['Border Design', 'Flower Pattern', 'Frame Design', 'Corner Design'],
+  'Leather Work': ['Keychain', 'Wallet', 'Bag Handle', 'Card Holder'],
+  'Jewelry': ['Pendant', 'Charm', 'Earring', 'Bracelet'],
+  'Fabric Crafts': ['Quilt Pattern', 'Applique Design', 'Embroidery Pattern', 'Patchwork'],
+  'Decorations': ['Paper Flower', 'Banner', 'Garland', 'Wall Decor'],
+  'Gift Wrapping': ['Gift Tag', 'Gift Box', 'Bow Design', 'Wrapper Pattern']
+};
+
 function Products() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,17 +71,37 @@ function Products() {
     });
   };
 
-  const [form, setForm] = useState({ name: '', description: '', price: '', stock: '', color: '', sellerId: '' });
+  const [form, setForm] = useState({
+    name: '',
+    description: '',
+    price: '',
+    stock: '',
+    category: '',
+    subCategory: '',
+    colors: [],
+    sellerId: '',
+    images: ['', '', '', '']
+  });
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name === 'colors') {
+      setForm({ ...form, colors: value.split(',').map(c => c.trim()) });
+    } else if (name.startsWith('image')) {
+      const index = parseInt(name.replace('image', ''));
+      const newImages = [...form.images];
+      newImages[index] = value;
+      setForm({ ...form, images: newImages });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     await axios.post('http://localhost:8081/api/products', form);
     fetchProducts();
-    setForm({ name: '', description: '', price: '', stock: '', color: '', sellerId: '' });
+    setForm({ name: '', description: '', price: '', stock: '', category: '', subCategory: '', colors: [], sellerId: '', images: ['', '', '', ''] });
   };
 
   const handleDelete = async (id) => {
@@ -111,14 +141,92 @@ function Products() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="max-w-md mx-auto mb-8">
-        <input name="name" placeholder="Name" value={form.name} onChange={handleChange} />
-        <input name="description" placeholder="Description" value={form.description} onChange={handleChange} />
-        <input name="price" type="number" placeholder="Price" value={form.price} onChange={handleChange} />
-        <input name="stock" type="number" placeholder="Stock" value={form.stock} onChange={handleChange} />
-        <input name="color" placeholder="Color" value={form.color} onChange={handleChange} />
-        <input name="sellerId" placeholder="Seller ID" value={form.sellerId} onChange={handleChange} />
-        <button type="submit">Add Product</button>
+      <form onSubmit={handleSubmit} className="max-w-md mx-auto mb-8 space-y-4">
+        <select
+          name="category"
+          value={form.category}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-lg border border-gray-300"
+        >
+          <option value="">Select Category</option>
+          {Object.keys(categories).map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+
+        {form.category && (
+          <select
+            name="subCategory"
+            value={form.subCategory}
+            onChange={handleChange}
+            className="w-full px-4 py-2 rounded-lg border border-gray-300"
+          >
+            <option value="">Select Sub-Category</option>
+            {categories[form.category].map(sub => (
+              <option key={sub} value={sub}>{sub}</option>
+            ))}
+          </select>
+        )}
+
+        <input
+          name="name"
+          placeholder="Product Name"
+          value={form.name}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-lg border border-gray-300"
+        />
+
+        <textarea
+          name="description"
+          placeholder="Description"
+          value={form.description}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-lg border border-gray-300"
+        />
+
+        {form.images.map((url, index) => (
+          <input
+            key={index}
+            name={`image${index}`}
+            placeholder={`Image URL ${index + 1}`}
+            value={url}
+            onChange={handleChange}
+            className="w-full px-4 py-2 rounded-lg border border-gray-300"
+          />
+        ))}
+
+        <input
+          name="colors"
+          placeholder="Colors (comma-separated)"
+          value={form.colors.join(', ')}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-lg border border-gray-300"
+        />
+
+        <input
+          name="price"
+          type="number"
+          placeholder="Price"
+          value={form.price}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-lg border border-gray-300"
+        />
+
+        <input
+          name="stock"
+          type="number"
+          placeholder="Stock"
+          value={form.stock}
+          onChange={handleChange}
+          className="w-full px-4 py-2 rounded-lg border border-gray-300"
+        />
+
+        <button
+          type="submit"
+          className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+        >
+          Add Product
+        </button>
       </form>
 
       {loading ? (

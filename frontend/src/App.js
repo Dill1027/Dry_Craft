@@ -15,6 +15,7 @@ import MyTutorials from "./pages/MyTutorials";
 import TutorialEdit from "./pages/TutorialEdit";
 import UserPhotos from "./pages/UserPhotos";
 import UserVideos from "./pages/UserVideos";
+import ProductDetail from './pages/ProductDetail';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
             <Route path="/addproducts" element={<AddProduct />} />
             <Route path="/productlist" element={<ProductList />} />
             <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
             {/* Tutorial Routes */}
             <Route path="/tutorials" element={<Tutorials />} />
             <Route path="/my-tutorials" element={<MyTutorials />} />
