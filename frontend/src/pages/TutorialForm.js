@@ -8,7 +8,8 @@ function TutorialForm() {
     title: '',
     description: '',
     steps: [''],
-    materials: ['']
+    materials: [''],
+    craftType: '' // Add this new field
   });
   const [images, setImages] = useState([]);
   const [video, setVideo] = useState(null);
@@ -17,6 +18,20 @@ function TutorialForm() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
   const [progress, setProgress] = useState(0);
+
+  // Add craft types constant
+  const craftTypes = [
+    'Paper Craft',
+    'Wood Craft',
+    'Textile Craft',
+    'Pottery',
+    'Jewelry Making',
+    'Metal Craft',
+    'Glass Craft',
+    'Leather Craft',
+    'Mixed Media',
+    'Other'
+  ];
 
   const resetMediaInputs = () => {
     imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
@@ -122,6 +137,7 @@ function TutorialForm() {
       formDataToSend.append('userId', user.id);
       formDataToSend.append('title', formData.title.trim());
       formDataToSend.append('description', formData.description.trim());
+      formDataToSend.append('craftType', formData.craftType); // Add this line
 
       const filteredSteps = formData.steps.filter(step => step.trim());
       const filteredMaterials = formData.materials.filter(material => material.trim());
@@ -263,6 +279,32 @@ function TutorialForm() {
                   placeholder="Describe your tutorial"
                   required
                 />
+              </div>
+
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2 group-hover:text-indigo-600 
+                               transition-colors duration-200">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                            d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                    </svg>
+                    Craft Type
+                  </div>
+                </label>
+                <select
+                  value={formData.craftType}
+                  onChange={(e) => setFormData({...formData, craftType: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 
+                         focus:border-indigo-500 transition-all duration-200 hover:border-indigo-300
+                         bg-white/50 backdrop-blur-sm"
+                  required
+                >
+                  <option value="">Select a craft type</option>
+                  {craftTypes.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-4">

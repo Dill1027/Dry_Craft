@@ -58,6 +58,7 @@ public class TutorialService {
 
     public Tutorial createTutorial(String userId, String title, String description, 
                                  List<String> steps, List<String> materials,
+                                 String craftType, // Add this parameter
                                  MultipartFile video, List<MultipartFile> images) throws IOException {
         // Validate user exists
         userRepository.findById(userId)
@@ -69,6 +70,7 @@ public class TutorialService {
         tutorial.setDescription(description);
         tutorial.setSteps(steps != null ? steps : new ArrayList<>());
         tutorial.setMaterials(materials != null ? materials : new ArrayList<>());
+        tutorial.setCraftType(craftType); // Add this line
         tutorial.setCreatedAt(LocalDateTime.now());
 
         List<String> mediaIds = new ArrayList<>();
@@ -198,6 +200,7 @@ public class TutorialService {
         existingTutorial.setDescription(updatedTutorial.getDescription());
         existingTutorial.setSteps(updatedTutorial.getSteps());
         existingTutorial.setMaterials(updatedTutorial.getMaterials());
+        existingTutorial.setCraftType(updatedTutorial.getCraftType()); // Add this line
         
         return tutorialRepository.save(existingTutorial);
     }

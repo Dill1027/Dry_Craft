@@ -7,7 +7,22 @@ function Tutorials() {
   const [tutorials, setTutorials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCraftType, setSelectedCraftType] = useState('All');
   const navigate = useNavigate();
+
+  const craftTypes = [
+    'All',
+    'Paper Craft',
+    'Wood Craft',
+    'Textile Craft',
+    'Pottery',
+    'Jewelry Making',
+    'Metal Craft',
+    'Glass Craft',
+    'Leather Craft',
+    'Mixed Media',
+    'Other'
+  ];
 
   useEffect(() => {
     fetchTutorials();
@@ -24,6 +39,11 @@ function Tutorials() {
       setLoading(false);
     }
   };
+
+  const filteredTutorials = tutorials.filter(tutorial => 
+    selectedCraftType === 'All' || 
+    tutorial.craftType?.toLowerCase() === selectedCraftType.toLowerCase()
+  );
 
   if (loading) {
     return (
@@ -63,6 +83,19 @@ function Tutorials() {
           </div>
 
           <div className="flex items-center gap-4">
+            <select
+              value={selectedCraftType}
+              onChange={(e) => setSelectedCraftType(e.target.value)}
+              className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 
+                       focus:border-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
+            >
+              {craftTypes.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
             <button
               onClick={() => navigate('/')}
               className="group px-4 py-2 flex items-center gap-2 text-blue-600 hover:text-blue-800 
@@ -94,7 +127,7 @@ function Tutorials() {
           </div>
         </div>
 
-        {tutorials.length === 0 ? (
+        {filteredTutorials.length === 0 ? (
           <div className="text-center py-16 bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 
                         transform transition-all duration-500 hover:scale-[1.02]">
             <div className="mb-6 animate-bounce">
@@ -103,12 +136,16 @@ function Tutorials() {
                       d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
               </svg>
             </div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-2">No tutorials yet</h3>
-            <p className="text-gray-600">Be the first to share your creative ideas!</p>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-2">
+              {selectedCraftType === 'All' ? 'No tutorials yet' : `No ${selectedCraftType} tutorials found`}
+            </h3>
+            <p className="text-gray-600">
+              {selectedCraftType === 'All' ? 'Be the first to share your creative ideas!' : 'Try a different craft type or create one yourself!'}
+            </p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-fadeIn">
-            {tutorials.map((tutorial, index) => (
+            {filteredTutorials.map((tutorial, index) => (
               <div 
                 key={tutorial.id} 
                 className="transform hover:-translate-y-2 transition-all duration-300"
