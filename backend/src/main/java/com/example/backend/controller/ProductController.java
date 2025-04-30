@@ -15,6 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -43,28 +45,45 @@ public class ProductController {
         return productRepository.findAll();
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getProductById(@PathVariable String id) {
+        try {
+            return productRepository.findById(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Error fetching product: " + e.getMessage());
+        }
+    }
+
     @PostMapping(consumes = {"multipart/form-data"})
     public ResponseEntity<?> createProduct(
             @RequestParam("name") String name,
             @RequestParam("description") String description,
             @RequestParam("price") double price,
             @RequestParam("stock") int stock,
-            @RequestParam("color") String color,
-            @RequestParam(value = "image", required = false) MultipartFile image
+            @RequestParam("category") String category,
+            @RequestParam("subCategory") String subCategory,
+            @RequestParam("colors") String colors,
+            @RequestParam("sellerId") String sellerId,
+            @RequestParam(value = "images", required = false) List<MultipartFile> images
     ) {
         try {
-            String imageUrl = null;
-            if (image != null && !image.isEmpty()) {
-                String fileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
-                Path uploadPath = Paths.get(uploadDirectory);
-                
-                if (!Files.exists(uploadPath)) {
-                    Files.createDirectories(uploadPath);
+            List<String> imageUrls = new ArrayList<>();
+            if (images != null && !images.isEmpty()) {
+                for (MultipartFile image : images) {
+                    String fileName = UUID.randomUUID() + "_" + image.getOriginalFilename();
+                    Path uploadPath = Paths.get(uploadDirectory);
+                    
+                    if (!Files.exists(uploadPath)) {
+                        Files.createDirectories(uploadPath);
+                    }
+                    
+                    Path filePath = uploadPath.resolve(fileName);
+                    Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+                    imageUrls.add("/api/uploads/" + fileName);
                 }
-                
-                Path filePath = uploadPath.resolve(fileName);
-                Files.copy(image.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
-                imageUrl = "/api/uploads/" + fileName;
             }
 
             Product product = new Product();
@@ -72,8 +91,11 @@ public class ProductController {
             product.setDescription(description);
             product.setPrice(price);
             product.setStock(stock);
-            product.setColor(color);
-            product.setImageUrl(imageUrl);
+            product.setCategory(category);
+            product.setSubCategory(subCategory);
+            product.setColors(Arrays.asList(colors.split(",")));
+            product.setSellerId(sellerId);
+            product.setImageUrls(imageUrls);
 
             Product savedProduct = productRepository.save(product);
             return ResponseEntity.ok(savedProduct);

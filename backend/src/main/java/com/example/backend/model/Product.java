@@ -3,6 +3,9 @@ package com.example.backend.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Document(collection = "products")
 public class Product {
     @Id
@@ -11,22 +14,30 @@ public class Product {
     private String description;
     private double price;
     private int stock;
-    private String color;
-    private String imageUrl;
+    private String category;
+    private String subCategory;
+    private List<String> colors;
+    private List<String> imageUrls;
+    private String sellerId;
 
     // Default constructor
     public Product() {
+        this.colors = new ArrayList<>();
+        this.imageUrls = new ArrayList<>();
     }
 
     // Constructor with all fields
-    public Product(String id, String name, String description, double price, int stock, String color, String imageUrl) {
+    public Product(String id, String name, String description, double price, int stock, String category, String subCategory, List<String> colors, List<String> imageUrls, String sellerId) {
         this.id = id;
         this.name = name;
         this.description = description;
         this.price = price;
         this.stock = stock;
-        this.color = color;
-        this.imageUrl = imageUrl;
+        this.category = category;
+        this.subCategory = subCategory;
+        this.colors = colors;
+        this.imageUrls = imageUrls;
+        this.sellerId = sellerId;
     }
 
     // Getters and setters
@@ -70,19 +81,43 @@ public class Product {
         this.stock = stock;
     }
 
-    public String getColor() {
-        return color;
+    public String getCategory() {
+        return category;
     }
 
-    public void setColor(String color) {
-        this.color = color;
+    public void setCategory(String category) {
+        this.category = category;
     }
 
-    public String getImageUrl() {
-        return imageUrl;
+    public String getSubCategory() {
+        return subCategory;
     }
 
-    public void setImageUrl(String imageUrl) {
-        this.imageUrl = imageUrl;
+    public void setSubCategory(String subCategory) {
+        this.subCategory = subCategory;
+    }
+
+    public List<String> getColors() {
+        return colors;
+    }
+
+    public void setColors(List<String> colors) {
+        this.colors = colors;
+    }
+
+    public List<String> getImageUrls() {
+        return imageUrls;
+    }
+
+    public void setImageUrls(List<String> imageUrls) {
+        this.imageUrls = imageUrls;
+    }
+
+    public String getSellerId() {
+        return sellerId;
+    }
+
+    public void setSellerId(String sellerId) {
+        this.sellerId = sellerId;
     }
 }

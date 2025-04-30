@@ -171,19 +171,31 @@ function Marketplace() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredProducts.map((product) => (
               <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                {product.imageUrl && (
-                  <img
-                    src={product.imageUrl}
-                    alt={product.name}
-                    className="w-full h-48 object-cover"
-                  />
-                )}
+                <div className="w-full h-48">
+                  {product.imageUrls && product.imageUrls.length > 0 ? (
+                    <img
+                      src={product.imageUrls[0]}
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = '/placeholder-image.jpg';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                      <span className="text-gray-400">No image available</span>
+                    </div>
+                  )}
+                </div>
                 <div className="p-4">
                   <h3 className="text-lg font-semibold text-gray-800">{product.name}</h3>
                   <p className="text-gray-600 text-sm mt-1">{product.description}</p>
                   <div className="mt-4 flex justify-between items-center">
                     <span className="text-purple-600 font-bold">${product.price}</span>
-                    <button className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors">
+                    <button 
+                      onClick={() => navigate(`/product/${product.id}`)}
+                      className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm hover:bg-purple-200 transition-colors"
+                    >
                       View Details
                     </button>
                   </div>
