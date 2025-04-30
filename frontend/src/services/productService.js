@@ -12,7 +12,14 @@ export const createProduct = (formData) => {
   });
 };
 
-export const updateProduct = (id, product) => axiosInstance.put(`${API_URL}/${id}`, product);
+export const updateProduct = async (id, formData) => {
+  return axiosInstance.put(`${API_URL}/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
 export const deleteProduct = (id) => axiosInstance.delete(`${API_URL}/${id}`);
 
 export const getProductById = async (id) => {
