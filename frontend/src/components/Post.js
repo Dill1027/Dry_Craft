@@ -663,54 +663,44 @@ function Post({
 
           <div className="flex flex-col border-t mt-4 pt-4">
             <div className="flex items-center space-x-6 mb-4">
-              <div className="relative">
+              <div className="flex space-x-4">
                 <button
-                  className={`reaction-button flex items-center space-x-2 ${
-                    currentReaction ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-                  } transition-colors duration-200`}
+                  className={`reaction-button flex items-center space-x-2 px-3 py-2 rounded-full 
+                    ${currentReaction === 'LIKE' 
+                      ? 'bg-blue-50 text-blue-500 scale-110' 
+                      : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'} 
+                    transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95`}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleReaction(currentReaction ? null : 'LIKE');
+                    handleReaction(currentReaction === 'LIKE' ? null : 'LIKE');
                   }}
-                  onMouseEnter={() => setShowReactionMenu(true)}
                 >
-                  <span className="text-xl relative">
-                    {currentReaction ? getReactionEmoji(currentReaction) : '👍'}
-                    {isHoveringReaction && currentReaction && (
-                      <span className="absolute -top-2 -right-2 animate-ping">
-                        {getReactionEmoji(currentReaction)}
-                      </span>
-                    )}
+                  <span className={`text-xl transform transition-transform duration-300 
+                    ${currentReaction === 'LIKE' ? 'animate-bounce' : 'hover:scale-110'}`}>
+                    👍
                   </span>
-                  <span className="text-sm font-medium">
-                    {getTotalReactions()}
-                  </span>
+                  <span className="text-sm font-medium">{reactionCounts['LIKE'] || 0}</span>
                 </button>
 
-                {showReactionMenu && (
-                  <div 
-                    className="reaction-menu absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg px-2 py-1 flex space-x-2 z-10"
-                    onMouseEnter={() => setShowReactionMenu(true)}
-                    onMouseLeave={() => setShowReactionMenu(false)}
-                  >
-                    {['LIKE', 'HEART'].map(type => (
-                      <button
-                        key={type}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleReaction(type);
-                        }}
-                        className={`p-2 hover:bg-gray-100 rounded-full transition-all duration-200 transform hover:scale-110 ${
-                          currentReaction === type ? 'text-blue-500 scale-110' : ''
-                        }`}
-                      >
-                        {getReactionEmoji(type)}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <button
+                  className={`reaction-button flex items-center space-x-2 px-3 py-2 rounded-full 
+                    ${currentReaction === 'HEART' 
+                      ? 'bg-red-50 text-red-500 scale-110' 
+                      : 'text-gray-500 hover:text-red-500 hover:bg-red-50'} 
+                    transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleReaction(currentReaction === 'HEART' ? null : 'HEART');
+                  }}
+                >
+                  <span className={`text-xl filter ${currentReaction === 'HEART' ? 'animate-heartbeat' : 'hover:scale-110'}
+                    transform transition-transform duration-300`}>
+                    ❤️
+                  </span>
+                  <span className="text-sm font-medium">{reactionCounts['HEART'] || 0}</span>
+                </button>
               </div>
 
               <button 

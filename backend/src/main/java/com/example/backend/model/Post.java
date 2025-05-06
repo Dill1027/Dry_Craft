@@ -141,28 +141,30 @@ public class Post {
         this.userReactions = userReactions;
     }
 
-    public Map<String, Integer> getReactionCounts() {
+    public void updateReactionCounts() {
         if (reactionCounts == null) {
             reactionCounts = new HashMap<>();
+        }
+        reactionCounts.clear();
+        reactionCounts.put("LIKE", 0);
+        reactionCounts.put("HEART", 0);
+        
+        if (userReactions != null) {
+            for (Reaction reaction : userReactions.values()) {
+                String type = reaction.toString();
+                reactionCounts.merge(type, 1, Integer::sum);
+            }
+        }
+    }
+
+    public Map<String, Integer> getReactionCounts() {
+        if (reactionCounts == null) {
+            updateReactionCounts();
         }
         return reactionCounts;
     }
 
-    public void setReactionCounts(Map<String, Integer> reactionCounts) {
-        this.reactionCounts = reactionCounts;
-    }
-
     public Reaction getUserReaction(String userId) {
-        return userReactions.get(userId);
-    }
-
-    public void updateReactionCounts() {
-        getReactionCounts().clear();
-        if (userReactions != null) {
-            for (Reaction reaction : userReactions.values()) {
-                String reactionType = reaction.toString();
-                reactionCounts.merge(reactionType, 1, Integer::sum);
-            }
-        }
+        return userReactions != null ? userReactions.get(userId) : null;
     }
 }

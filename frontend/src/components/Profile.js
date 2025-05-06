@@ -14,6 +14,8 @@ function Profile() {
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState('');
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -67,6 +69,15 @@ function Profile() {
     }
   };
 
+  const fetchNotifications = async () => {
+    try {
+      const response = await axiosInstance.get(`/api/notifications/unread?userId=${user?.id}`);
+      setNotifications(response.data || []);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -77,6 +88,15 @@ function Profile() {
 
   useEffect(() => {
     fetchUserPosts();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchNotifications();
+      // Poll for new notifications every minute
+      const interval = setInterval(fetchNotifications, 60000);
+      return () => clearInterval(interval);
+    }
   }, [user?.id]);
 
   const fetchUserPosts = async () => {
@@ -103,6 +123,15 @@ function Profile() {
     ));
   };
 
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await axiosInstance.put(`/api/notifications/${notificationId}/read`);
+      setNotifications(notifications.filter(n => n.id !== notificationId));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
@@ -111,15 +140,70 @@ function Profile() {
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-3xl font-bold">Profile Settings</h2>
-              <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg flex items-center space-x-2 transition-all duration-300 hover:transform hover:-translate-x-1"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                <span>Back to Feed</span>
-              </button>
+              <div className="flex items-center space-x-4">
+                {/* Add notification button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors relative"
+                  >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {notifications?.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                        {notifications.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notification dropdown */}
+                  {showNotifications && notifications && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg z-50 max-h-[80vh] overflow-y-auto">
+                      <div className="p-4">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Notifications</h3>
+                        {notifications.length === 0 ? (
+                          <p className="text-gray-500 text-center py-4">No new notifications</p>
+                        ) : (
+                          <div className="space-y-4">
+                            {notifications.map(notification => (
+                              <div key={notification.id} className="flex items-start p-3 bg-blue-50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="text-sm text-gray-800">
+                                    <span className="font-semibold">{notification.senderName}</span>
+                                    {' commented on your post: '}
+                                    <span className="text-gray-600">"{notification.content}"</span>
+                                  </p>
+                                  <div className="mt-2 flex gap-2">
+                                    <button
+                                      onClick={() => handleMarkAsRead(notification.id)}
+                                      className="text-sm text-blue-500 hover:text-blue-600"
+                                    >
+                                      Mark as read
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Existing back button */}
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg flex items-center space-x-2 transition-all duration-300 hover:transform hover:-translate-x-1"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  <span>Back to Feed</span>
+                </button>
+              </div>
             </div>
             <p className="text-blue-100">Manage your account information</p>
           </div>

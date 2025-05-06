@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.backend.model.PostResponse;
+import com.example.backend.service.NotificationService;
 import com.example.backend.service.PostService;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSDownloadStream;
@@ -40,10 +41,12 @@ public class PostController {
     private static final Logger logger = Logger.getLogger(PostController.class.getName());
     private final PostService postService;
     private final GridFSBucket gridFSBucket;
+    private final NotificationService notificationService;
 
-    public PostController(PostService postService, GridFSBucket gridFSBucket) {
+    public PostController(PostService postService, GridFSBucket gridFSBucket, NotificationService notificationService) {
         this.postService = postService;
         this.gridFSBucket = gridFSBucket;
+        this.notificationService = notificationService;
     }
 
     @PostMapping("/posts")
@@ -136,6 +139,31 @@ public class PostController {
             @RequestParam String content) {
         try {
             PostResponse response = postService.addComment(postId, userId, content);
+            
+            // Create notification for post owner if commenter is not the owner
+            if (!response.getUserId().equals(userId)) {
+                try {
+                    String commenterName;
+                    try {
+                        commenterName = postService.getUserName(userId);
+                    } catch (Exception e) {
+                        commenterName = "Someone"; // Fallback name if user lookup fails
+                    }
+                    
+                    notificationService.createNotification(
+                        response.getUserId(),    // recipient (post owner)
+                        userId,                  // sender (commenter)
+                        commenterName,
+                        postId,
+                        String.format("commented: %s", content),
+                        "COMMENT"
+                    );
+                    logger.log(Level.INFO, "Notification created for user: " + response.getUserId());
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Failed to create notification: " + e.getMessage());
+                }
+            }
+            
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error adding comment: " + e.getMessage());
@@ -180,7 +208,29 @@ public class PostController {
             String userId = payload.get("userId");
             String reactionType = payload.get("reactionType");
             
+            if (userId == null || reactionType == null) {
+                return ResponseEntity.badRequest().build();
+            }
+            
             PostResponse response = postService.handleReaction(postId, userId, reactionType);
+            
+            // Create notification for post owner if reactor is not the owner
+            if (!response.getUserId().equals(userId)) {
+                try {
+                    String reactorName = postService.getUserName(userId);
+                    notificationService.createNotification(
+                        response.getUserId(),
+                        userId,
+                        reactorName,
+                        postId,
+                        String.format("reacted with %s", reactionType.toLowerCase()),
+                        "REACTION"
+                    );
+                } catch (Exception e) {
+                    logger.log(Level.WARNING, "Failed to create reaction notification", e);
+                }
+            }
+            
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error handling reaction: " + e.getMessage());
@@ -207,9 +257,8 @@ public class PostController {
             long contentLength = file.getLength();
             long start = 0;
             long end = contentLength - 1;
-            long chunkSize = Math.min(1024 * 1024, contentLength); // 1MB chunks or file size
+            long chunkSize = Math.min(1024 * 1024, contentLength);
 
-            // Parse range header if present
             if (rangeHeader != null) {
                 String[] ranges = rangeHeader.replace("bytes=", "").split("-");
                 start = Long.parseLong(ranges[0]);
@@ -225,8 +274,11 @@ public class PostController {
             headers.add("Content-Range", String.format("bytes %d-%d/%d", start, end, contentLength));
             headers.setContentLength(end - start + 1);
             headers.setCacheControl(CacheControl.noCache());
+            
+            // Set proper content type
+            String contentType = determineContentType(file.getFilename(), file.getMetadata());
+            headers.setContentType(MediaType.parseMediaType(contentType));
 
-            // Stream the content
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             try (GridFSDownloadStream downloadStream = gridFSBucket.openDownloadStream(objectId)) {
                 downloadStream.skip(start);

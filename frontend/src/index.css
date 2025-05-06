@@ -534,3 +534,47 @@
     display: none;
   }
 }
+
+/* Custom Animations */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.1); }
+  50% { transform: scale(1); }
+  75% { transform: scale(1.2); }
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1s ease-in-out;
+}
+
+/* Add hover glow effects for reaction buttons */
+.reaction-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.reaction-button::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+  pointer-events: none;
+}
+
+.reaction-button:hover::after {
+  opacity: 0.5;
+}
+
+.reaction-button:active::after {
+  opacity: 0.7;
+}
+
+/* Smooth number transition */
+.reaction-button span {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
