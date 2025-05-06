@@ -33,12 +33,14 @@ function TutorialForm() {
     'Other'
   ];
 
-  const resetMediaInputs = () => {
+  const clearImages = () => {
     imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
-    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
-
     setImages([]);
     setImagePreviewUrls([]);
+  };
+
+  const clearVideo = () => {
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
     setVideo(null);
     setVideoPreviewUrl('');
   };
@@ -47,7 +49,8 @@ function TutorialForm() {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    if (video) resetMediaInputs();
+    // Clear existing previews first
+    imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
 
     const validImages = files.every(file => file.type.startsWith('image/'));
     if (!validImages) {
@@ -63,10 +66,7 @@ function TutorialForm() {
 
     setImages(files);
     const urls = files.map(file => URL.createObjectURL(file));
-    setImagePreviewUrls(prev => {
-      prev.forEach(url => URL.revokeObjectURL(url));
-      return urls;
-    });
+    setImagePreviewUrls(urls);
     setError('');
   };
 
@@ -74,7 +74,10 @@ function TutorialForm() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (images.length > 0) resetMediaInputs();
+    // Clear existing preview first
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+    }
 
     if (file.size > 50 * 1024 * 1024) {
       setError('Video must be less than 50MB');
@@ -91,12 +94,9 @@ function TutorialForm() {
     videoElement.preload = 'metadata';
 
     videoElement.onloadedmetadata = () => {
-      window.URL.revokeObjectURL(videoElement.src);
-
       if (videoElement.duration > 30) {
+        URL.revokeObjectURL(videoURL);
         setError('Video must be 30 seconds or less');
-        setVideo(null);
-        setVideoPreviewUrl('');
         return;
       }
 
@@ -106,8 +106,8 @@ function TutorialForm() {
     };
 
     videoElement.onerror = () => {
+      URL.revokeObjectURL(videoURL);
       setError('Could not load video. Please try a different file.');
-      window.URL.revokeObjectURL(videoElement.src);
     };
 
     videoElement.src = videoURL;
@@ -115,11 +115,13 @@ function TutorialForm() {
 
   useEffect(() => {
     return () => {
+      // Cleanup blob URLs when component unmounts
+      imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
       if (videoPreviewUrl) {
         URL.revokeObjectURL(videoPreviewUrl);
       }
     };
-  }, [videoPreviewUrl]);
+  }, [imagePreviewUrls, videoPreviewUrl]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -132,13 +134,33 @@ function TutorialForm() {
     try {
       setLoading(true);
       setError('');
+      setProgress(0);
 
       const formDataToSend = new FormData();
       formDataToSend.append('userId', user.id);
       formDataToSend.append('title', formData.title.trim());
       formDataToSend.append('description', formData.description.trim());
-      formDataToSend.append('craftType', formData.craftType); // Add this line
+      formDataToSend.append('craftType', formData.craftType);
 
+      // Handle media files first
+      const processedImages = [];
+      if (images?.length > 0) {
+        for (const image of images) {
+          if (image.size > 1024 * 1024) {
+            processedImages.push(await compressImage(image));
+          } else {
+            processedImages.push(image);
+          }
+        }
+      }
+
+      // Append processed media
+      processedImages.forEach(img => formDataToSend.append('images', img));
+      if (video) {
+        formDataToSend.append('video', video);
+      }
+
+      // Add other data
       const filteredSteps = formData.steps.filter(step => step.trim());
       const filteredMaterials = formData.materials.filter(material => material.trim());
 
@@ -148,26 +170,13 @@ function TutorialForm() {
         return;
       }
 
-      filteredSteps.forEach((step) => {
-        formDataToSend.append('steps', step);
-      });
+      filteredSteps.forEach(step => formDataToSend.append('steps', step));
+      filteredMaterials.forEach(material => formDataToSend.append('materials', material));
 
-      filteredMaterials.forEach((material) => {
-        formDataToSend.append('materials', material);
-      });
-
-      if (images && images.length > 0) {
-        images.forEach(image => {
-          formDataToSend.append('images', image);
-        });
-      }
-
-      if (video) {
-        formDataToSend.append('video', video);
-      }
-
-      const response = await axiosInstance.uploadMedia('/api/tutorials', formDataToSend, {
-        timeout: 300000,
+      // Upload with retry logic
+      await axiosInstance.uploadMedia('/api/tutorials', formDataToSend, {
+        timeout: 600000,
+        retries: 3,
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setProgress(progress);
@@ -178,13 +187,57 @@ function TutorialForm() {
 
     } catch (err) {
       console.error('Error creating tutorial:', err);
-      const errorMsg = err.code === 'ECONNABORTED'
-        ? 'Upload timed out. Please try again with a smaller file or check your connection'
-        : err.response?.data?.message || 'Failed to create tutorial';
+      let errorMsg;
+      
+      if (err.code === 'ECONNRESET' || err.code === 'ERR_NETWORK') {
+        errorMsg = 'Connection lost. Please check your internet connection and try again.';
+      } else if (err.code === 'ECONNABORTED') {
+        errorMsg = 'Upload timed out. Please try again with a smaller file or check your connection';
+      } else {
+        errorMsg = err.response?.data?.message || 'Failed to create tutorial';
+      }
+      
       setError(errorMsg);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Add image compression utility
+  const compressImage = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const maxWidth = 1920;
+          const maxHeight = 1080;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width *= ratio;
+            height *= ratio;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            }));
+          }, 'image/jpeg', 0.8);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const addStep = () => {
@@ -423,7 +476,7 @@ function TutorialForm() {
                     {imagePreviewUrls.length > 0 && (
                       <button
                         type="button"
-                        onClick={resetMediaInputs}
+                        onClick={clearImages}
                         className="mt-2 text-sm text-red-600 hover:text-red-800"
                       >
                         Clear Images
@@ -437,6 +490,11 @@ function TutorialForm() {
                               src={url}
                               alt={`Preview ${index + 1}`}
                               className="w-full h-32 object-cover"
+                              onError={() => {
+                                console.error(`Failed to load preview for image ${index}`);
+                                const newUrls = imagePreviewUrls.filter((_, i) => i !== index);
+                                setImagePreviewUrls(newUrls);
+                              }}
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                           </div>
@@ -459,7 +517,7 @@ function TutorialForm() {
                     {videoPreviewUrl && (
                       <button
                         type="button"
-                        onClick={resetMediaInputs}
+                        onClick={clearVideo}
                         className="mt-2 text-sm text-red-600 hover:text-red-800"
                       >
                         Clear Video
@@ -471,18 +529,16 @@ function TutorialForm() {
                           src={videoPreviewUrl} 
                           className="w-full h-48 object-cover rounded-lg" 
                           controls
+                          onError={(e) => {
+                            console.error('Video preview error:', e);
+                            clearVideo();
+                            setError('Failed to load video preview');
+                          }}
                         />
                       </div>
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  You can add either images or a video, but not both.
-                </p>
               </div>
             </div>
 
