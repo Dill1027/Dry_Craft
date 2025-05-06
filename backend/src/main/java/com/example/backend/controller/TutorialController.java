@@ -38,11 +38,12 @@ public class TutorialController {
             @RequestParam("description") String description,
             @RequestParam("steps") List<String> steps,
             @RequestParam("materials") List<String> materials,
+            @RequestParam("craftType") String craftType,
             @RequestParam(value = "video", required = false) MultipartFile video,
             @RequestParam(value = "images", required = false) List<MultipartFile> images) {
         try {
             Tutorial tutorial = tutorialService.createTutorial(
-                userId, title, description, steps, materials, video, images);
+                userId, title, description, steps, materials, craftType, video, images);
             return ResponseEntity.ok(tutorial);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

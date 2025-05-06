@@ -192,6 +192,7 @@ function Home() {
           </div>
           <div className="flex gap-4 items-center">
             <button
+
               onClick={() => navigate("/tutorials/create")}
               className="px-4 py-2 text-green-600 border-2 border-green-600 rounded-lg hover:bg-green-50 
                        transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
@@ -234,6 +235,7 @@ function Home() {
             </button>
 
             <button
+
               onClick={() => navigate("/marketplace")}
               className="px-4 py-2 text-purple-600 border-2 border-purple-600 rounded-lg hover:bg-purple-50 
                        transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"

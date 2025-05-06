@@ -19,6 +19,7 @@ public class Tutorial {
     private List<String> imageUrls;
     private List<String> mediaIds;
     private LocalDateTime createdAt;
+    private String craftType;  // Add this field
 
     // Add getters and setters
     public String getId() {
@@ -99,5 +100,13 @@ public class Tutorial {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public String getCraftType() {
+        return craftType;
+    }
+
+    public void setCraftType(String craftType) {
+        this.craftType = craftType;
     }
 }
