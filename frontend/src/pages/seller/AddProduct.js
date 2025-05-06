@@ -104,7 +104,7 @@ const AddProduct = () => {
       });
 
       await createProduct(formData);
-      navigate('/productlist');
+      navigate('/products');
     } catch (err) {
       console.error('Error adding product:', err);
       setError(err.response?.data?.message || 'Failed to add product. Please try again.');
