@@ -178,6 +178,12 @@ public class PostController {
             @RequestParam String userId,
             @RequestParam String content) {
         try {
+            // Validate comment ownership and post ownership
+            if (!postService.canModifyComment(postId, commentIndex, userId)) {
+                logger.log(Level.WARNING, "Unauthorized attempt to update comment by user: " + userId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             PostResponse response = postService.updateComment(postId, commentIndex, userId, content);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -192,10 +198,55 @@ public class PostController {
             @PathVariable int commentIndex,
             @RequestParam String userId) {
         try {
+            // Validate comment ownership and post ownership
+            if (!postService.canModifyComment(postId, commentIndex, userId)) {
+                logger.log(Level.WARNING, "Unauthorized attempt to delete comment by user: " + userId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             PostResponse response = postService.deleteComment(postId, commentIndex, userId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error deleting comment: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/posts/{postId}/comments/{commentIndex}/profile")
+    public ResponseEntity<PostResponse> deleteProfileComment(
+            @PathVariable String postId,
+            @PathVariable int commentIndex,
+            @RequestParam String userId) {
+        try {
+            // Check if user owns the post
+            if (!postService.isPostOwner(postId, userId)) {
+                logger.log(Level.WARNING, "User " + userId + " attempted to delete comment on post they don't own");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            PostResponse response = postService.deleteComment(postId, commentIndex, userId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error deleting comment from profile: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @DeleteMapping("/posts/{postId}/comments/all")
+    public ResponseEntity<PostResponse> deleteAllComments(
+            @PathVariable String postId,
+            @RequestParam String userId) {
+        try {
+            // Check if user owns the post
+            if (!postService.isPostOwner(postId, userId)) {
+                logger.log(Level.WARNING, "User " + userId + " attempted to delete all comments on post they don't own");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            PostResponse response = postService.deleteAllComments(postId);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error deleting all comments: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }

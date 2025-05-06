@@ -307,11 +307,12 @@ public class PostService {
             throw new IllegalArgumentException("Invalid comment index");
         }
 
-        String existingComment = post.getComments().get(commentIndex);
-        String commentAuthorId = existingComment.split("\\|")[0];
-        
-        if (!commentAuthorId.equals(userId)) {
-            throw new IllegalArgumentException("You can only delete your own comments");
+        // Check if user is post owner or comment author
+        String comment = post.getComments().get(commentIndex);
+        String commentAuthorId = comment.split("\\|")[0];
+
+        if (!userId.equals(post.getUserId()) && !userId.equals(commentAuthorId)) {
+            throw new IllegalArgumentException("You can only delete your own comments or comments on your posts");
         }
 
         List<String> comments = post.getComments();
@@ -319,6 +320,27 @@ public class PostService {
         post = postRepository.save(post);
         
         return convertToPostResponse(post);
+    }
+
+    public boolean canModifyComment(String postId, int commentIndex, String userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        if (commentIndex < 0 || commentIndex >= post.getComments().size()) {
+            throw new IllegalArgumentException("Invalid comment index");
+        }
+
+        String comment = post.getComments().get(commentIndex);
+        String commentAuthorId = comment.split("\\|")[0];
+
+        // Allow if user is either the comment author or the post owner
+        return userId.equals(commentAuthorId) || userId.equals(post.getUserId());
+    }
+
+    public boolean isPostOwner(String postId, String userId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+        return post.getUserId().equals(userId);
     }
 
     public PostResponse handleReaction(String postId, String userId, String reactionType) {
@@ -351,5 +373,15 @@ public class PostService {
         response.setReactionCounts(post.getReactionCounts());
         
         return response;
+    }
+
+    public PostResponse deleteAllComments(String postId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+        
+        post.setComments(new ArrayList<>());
+        post = postRepository.save(post);
+        
+        return convertToPostResponse(post);
     }
 }
