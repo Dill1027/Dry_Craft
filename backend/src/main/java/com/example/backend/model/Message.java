@@ -14,9 +14,6 @@ public class Message {
     private String content;
     private LocalDateTime createdAt;
     private boolean isRead;
-    private String parentMessageId;  // For tracking replies
-    private String replyContent;     // Content of the reply
-    private LocalDateTime replyAt;   // When the reply was sent
 
     // Getters and setters
     public String getId() {
@@ -73,29 +70,5 @@ public class Message {
 
     public void setRead(boolean read) {
         isRead = read;
-    }
-
-    public String getParentMessageId() {
-        return parentMessageId;
-    }
-
-    public void setParentMessageId(String parentMessageId) {
-        this.parentMessageId = parentMessageId;
-    }
-
-    public String getReplyContent() {
-        return replyContent;
-    }
-
-    public void setReplyContent(String replyContent) {
-        this.replyContent = replyContent;
-    }
-
-    public LocalDateTime getReplyAt() {
-        return replyAt;
-    }
-
-    public void setReplyAt(LocalDateTime replyAt) {
-        this.replyAt = replyAt;
     }
 }

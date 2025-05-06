@@ -28,14 +28,6 @@ public class MessageService {
         return messageRepository.findBySellerId(sellerId);
     }
     
-    public List<Message> getBuyerMessages(String buyerId) {
-        try {
-            return messageRepository.findByBuyerIdOrderByCreatedAtDesc(buyerId);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch buyer messages: " + e.getMessage());
-        }
-    }
-    
     public List<Message> getUnreadMessages(String sellerId) {
         return messageRepository.findBySellerIdAndIsReadFalse(sellerId);
     }
@@ -44,15 +36,6 @@ public class MessageService {
         Message message = messageRepository.findById(messageId)
             .orElseThrow(() -> new RuntimeException("Message not found"));
         message.setRead(true);
-        return messageRepository.save(message);
-    }
-    
-    public Message replyToMessage(String messageId, String replyContent) {
-        Message message = messageRepository.findById(messageId)
-            .orElseThrow(() -> new RuntimeException("Message not found"));
-        
-        message.setReplyContent(replyContent);
-        message.setReplyAt(LocalDateTime.now());
         return messageRepository.save(message);
     }
 }

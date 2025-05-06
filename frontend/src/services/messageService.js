@@ -20,11 +20,3 @@ export const getUnreadMessages = (sellerId) => {
 export const markMessageAsRead = (messageId) => {
   return axiosInstance.put(`/api/messages/${messageId}/read`);
 };
-
-export const replyToMessage = (messageId, replyContent) => {
-  return axiosInstance.post(`/api/messages/${messageId}/reply`, { replyContent });
-};
-
-export const getBuyerMessages = (buyerId) => {
-  return axiosInstance.get(`/api/messages/buyer/${buyerId}`);
-};

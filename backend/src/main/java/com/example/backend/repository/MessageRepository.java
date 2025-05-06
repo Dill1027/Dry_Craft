@@ -8,5 +8,4 @@ public interface MessageRepository extends MongoRepository<Message, String> {
     List<Message> findBySellerId(String sellerId);
     List<Message> findByBuyerId(String buyerId);
     List<Message> findBySellerIdAndIsReadFalse(String sellerId);
-    List<Message> findByBuyerIdOrderByCreatedAtDesc(String buyerId);
 }

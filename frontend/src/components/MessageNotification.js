@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { getUnreadMessages, markMessageAsRead, replyToMessage } from '../services/messageService';
+import { getUnreadMessages, markMessageAsRead } from '../services/messageService';
 
 const MessageNotification = ({ sellerId }) => {
   const [unreadMessages, setUnreadMessages] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [replyContents, setReplyContents] = useState({}); // Track reply content per message
 
   useEffect(() => {
     const fetchUnreadMessages = async () => {
@@ -28,31 +27,6 @@ const MessageNotification = ({ sellerId }) => {
       setUnreadMessages(prev => prev.filter(msg => msg.id !== messageId));
     } catch (error) {
       console.error('Error marking message as read:', error);
-    }
-  };
-
-  const handleReply = async (messageId) => {
-    try {
-      const replyContent = replyContents[messageId];
-      if (!replyContent?.trim()) {
-        return;
-      }
-
-      await replyToMessage(messageId, replyContent);
-      
-      setUnreadMessages(prev => prev.map(msg => 
-        msg.id === messageId 
-          ? { ...msg, replyContent, replyAt: new Date() }
-          : msg
-      ));
-      
-      // Clear the reply content for this message
-      setReplyContents(prev => ({
-        ...prev,
-        [messageId]: ''
-      }));
-    } catch (error) {
-      console.error('Error replying to message:', error);
     }
   };
 
@@ -80,36 +54,16 @@ const MessageNotification = ({ sellerId }) => {
         {unreadMessages.map(message => (
           <div key={message.id} className="p-4 bg-white rounded-lg shadow border border-gray-100">
             <p className="text-gray-800 mb-2">{message.content}</p>
-            <div className="flex flex-col gap-2">
-              <textarea
-                className="w-full p-2 border rounded-lg"
-                placeholder="Write a reply..."
-                rows="2"
-                value={replyContents[message.id] || ''}
-                onChange={(e) => setReplyContents(prev => ({
-                  ...prev,
-                  [message.id]: e.target.value
-                }))}
-              />
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => handleReply(message.id)}
-                  disabled={!replyContents[message.id]?.trim()}
-                  className={`px-4 py-2 rounded-lg ${
-                    !replyContents[message.id]?.trim() 
-                      ? 'bg-gray-300 cursor-not-allowed' 
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                  }`}
-                >
-                  Reply
-                </button>
-                <button
-                  onClick={() => handleMarkAsRead(message.id)}
-                  className="text-sm text-blue-500 hover:text-blue-600"
-                >
-                  Mark as read
-                </button>
-              </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-gray-500">
+                {new Date(message.createdAt).toLocaleString()}
+              </span>
+              <button
+                onClick={() => handleMarkAsRead(message.id)}
+                className="text-sm text-blue-500 hover:text-blue-600 font-medium"
+              >
+                Mark as read
+              </button>
             </div>
           </div>
         ))}
