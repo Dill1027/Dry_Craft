@@ -17,6 +17,7 @@ import UserPhotos from "./pages/UserPhotos";
 import UserVideos from "./pages/UserVideos";
 import ProductDetail from './pages/ProductDetail';
 import Messages from "./pages/Messages";
+import UserProfileView from './components/UserProfileView';
 
 function App() {
   return (
@@ -29,7 +30,8 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/photos" element={<UserPhotos />} />
-            <Route path="/profile/videos" element={<UserVideos />} /> {/* Add this line */}
+            <Route path="/profile/videos" element={<UserVideos />} />
+            <Route path="/profile/:userId" element={<UserProfileView />} />
             {/* Product Routes */}
             <Route path="/products" element={<Products />} />
             <Route path="/addproducts" element={<AddProduct />} />

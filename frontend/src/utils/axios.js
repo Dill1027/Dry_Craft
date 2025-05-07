@@ -165,4 +165,22 @@ axiosInstance.loadMedia = (mediaId, options = {}) => {
   });
 };
 
+// Add profile picture upload method with optimized configuration
+axiosInstance.uploadProfilePicture = async (userId, imageFile) => {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+
+  return axiosInstance({
+    url: `/api/users/${userId}/profile-picture`,
+    method: 'PUT',
+    data: formData,
+    timeout: 60000,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
 export default axiosInstance;
