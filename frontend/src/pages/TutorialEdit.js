@@ -11,8 +11,23 @@ function TutorialEdit() {
     title: '',
     description: '',
     steps: [''],
-    materials: ['']
+    materials: [''],
+    craftType: '' // Add craftType
   });
+
+  // Add craft types constant
+  const craftTypes = [
+    'Paper Craft',
+    'Wood Craft',
+    'Textile Craft',
+    'Pottery',
+    'Jewelry Making',
+    'Metal Craft',
+    'Glass Craft',
+    'Leather Craft',
+    'Mixed Media',
+    'Other'
+  ];
 
   useEffect(() => {
     const fetchTutorial = async () => {
@@ -23,7 +38,8 @@ function TutorialEdit() {
           title: tutorial.title,
           description: tutorial.description,
           steps: tutorial.steps || [''],
-          materials: tutorial.materials || ['']
+          materials: tutorial.materials || [''],
+          craftType: tutorial.craftType || '' // Add craftType
         });
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to fetch tutorial');
@@ -98,6 +114,21 @@ function TutorialEdit() {
                 className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Craft Type</label>
+              <select
+                value={formData.craftType}
+                onChange={(e) => setFormData({ ...formData, craftType: e.target.value })}
+                className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                required
+              >
+                <option value="">Select a craft type</option>
+                {craftTypes.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
             </div>
 
             <div>

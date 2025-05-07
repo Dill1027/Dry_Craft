@@ -197,8 +197,8 @@ function Home() {
           </div>
           <div className="flex gap-4 items-center">
             <button
-              onClick={() => navigate("/tutorials/create")}
-              className="px-4 py-2 text-green-600 border-2 border-green-600 rounded-lg hover:bg-green-50 
+              onClick={() => navigate("/marketplace")}
+              className="px-4 py-2 text-purple-600 border-2 border-purple-600 rounded-lg hover:bg-purple-50 
                        transform hover:-translate-y-0.5 transition-all duration-200 flex items-center gap-2"
             >
               <svg
@@ -211,10 +211,10 @@ function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
                 />
               </svg>
-              Create Tutorial
+              Marketplace
             </button>
             <button
               onClick={() => navigate("/tutorials")}

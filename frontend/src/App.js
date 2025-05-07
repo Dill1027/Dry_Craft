@@ -7,6 +7,7 @@ import Profile from './components/Profile';
 import Products from './pages/seller/Products';
 import AddProduct from "./pages/seller/AddProduct";
 import ProductList from "./pages/seller/ProductList";
+import Marketplace from "./pages/Marketplace";
 import Tutorials from "./pages/Tutorials";
 import TutorialForm from "./pages/TutorialForm";
 import TutorialDetail from "./pages/TutorialDetail";
@@ -14,6 +15,8 @@ import MyTutorials from "./pages/MyTutorials";
 import TutorialEdit from "./pages/TutorialEdit";
 import UserPhotos from "./pages/UserPhotos";
 import UserVideos from "./pages/UserVideos";
+import ProductDetail from './pages/ProductDetail';
+import Messages from "./pages/Messages";
 
 function App() {
   return (
@@ -31,6 +34,9 @@ function App() {
             <Route path="/products" element={<Products />} />
             <Route path="/addproducts" element={<AddProduct />} />
             <Route path="/productlist" element={<ProductList />} />
+            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/messages" element={<Messages />} />
             {/* Tutorial Routes */}
             <Route path="/tutorials" element={<Tutorials />} />
             <Route path="/my-tutorials" element={<MyTutorials />} />
