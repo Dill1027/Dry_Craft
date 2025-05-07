@@ -101,20 +101,11 @@ public class Post {
     }
 
     public int getLikeCount() {
-        return likedByUsers.size();
+        return likedByUsers != null ? likedByUsers.size() : 0;
     }
 
     public boolean isLikedByUser(String userId) {
-        return likedByUsers.contains(userId);
-    }
-
-    public int getLikes() {
-        return this.likedByUsers != null ? this.likedByUsers.size() : 0;
-    }
-
-    public void setLikes(int likes) {
-        // This method is kept for compatibility but doesn't need implementation
-        // since we're using likedByUsers set instead
+        return likedByUsers != null && likedByUsers.contains(userId);
     }
 
     public List<String> getComments() {
@@ -144,6 +135,7 @@ public class Post {
     public Map<String, Integer> getReactionCounts() {
         if (reactionCounts == null) {
             reactionCounts = new HashMap<>();
+            updateReactionCounts();
         }
         return reactionCounts;
     }
@@ -153,16 +145,17 @@ public class Post {
     }
 
     public Reaction getUserReaction(String userId) {
-        return userReactions.get(userId);
+        return userReactions != null ? userReactions.get(userId) : null;
     }
 
     public void updateReactionCounts() {
-        getReactionCounts().clear();
+        Map<String, Integer> counts = new HashMap<>();
         if (userReactions != null) {
             for (Reaction reaction : userReactions.values()) {
                 String reactionType = reaction.toString();
-                reactionCounts.merge(reactionType, 1, Integer::sum);
+                counts.merge(reactionType, 1, Integer::sum);
             }
         }
+        this.reactionCounts = counts;
     }
 }

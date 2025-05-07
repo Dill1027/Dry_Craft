@@ -26,9 +26,12 @@ function Post({
   const [newComment, setNewComment] = useState("");
   const [editingCommentIndex, setEditingCommentIndex] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState('');
-  const [currentReaction, setCurrentReaction] = useState(post?.userReaction || null);
+  const [currentReaction, setCurrentReaction] = useState(() => {
+    const savedReaction = localStorage.getItem(`post_${post.id}_reaction`);
+    return savedReaction || post?.userReaction || null;
+  });
   const [reactionCounts, setReactionCounts] = useState(() => {
-    return post?.reactionCounts || { LIKE: 0, HEART: 0 };
+    return post?.reactionCounts || {};
   });
   const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [isHoveringReaction, setIsHoveringReaction] = useState(false);
@@ -162,7 +165,19 @@ function Post({
     if (post?.reactionCounts) {
       setReactionCounts(post.reactionCounts);
     }
-  }, [post?.reactionCounts]);
+    if (post?.userReaction) {
+      setCurrentReaction(post.userReaction);
+      localStorage.setItem(`post_${post.id}_reaction`, post.userReaction);
+    }
+  }, [post]);
+
+  useEffect(() => {
+    if (currentReaction) {
+      localStorage.setItem(`post_${post.id}_reaction`, currentReaction);
+    } else {
+      localStorage.removeItem(`post_${post.id}_reaction`);
+    }
+  }, [currentReaction, post.id]);
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
@@ -320,48 +335,55 @@ function Post({
     const oldCounts = { ...reactionCounts };
 
     try {
-      // Toggle reaction if clicking the same type
       const newReactionType = currentReaction === reactionType ? null : reactionType;
       
       // Optimistic update
       setCurrentReaction(newReactionType);
       const updatedCounts = { ...reactionCounts };
       
-      // Remove old reaction count
       if (oldReaction) {
         updatedCounts[oldReaction] = Math.max(0, (updatedCounts[oldReaction] || 0) - 1);
       }
       
-      // Add new reaction count
       if (newReactionType) {
         updatedCounts[newReactionType] = (updatedCounts[newReactionType] || 0) + 1;
         setIsHoveringReaction(true);
       }
       setReactionCounts(updatedCounts);
 
-      // Make API call
       const response = await axiosInstance.post(`/api/posts/${post.id}/reactions`, {
         userId: user.id,
         reactionType: newReactionType
       });
 
-      // Update with server response
       if (response.data) {
         setCurrentReaction(response.data.userReaction);
-        setReactionCounts(response.data.reactionCounts);
+        setReactionCounts(response.data.reactionCounts || {});
+        
+        if (response.data.userReaction) {
+          localStorage.setItem(`post_${post.id}_reaction`, response.data.userReaction);
+        } else {
+          localStorage.removeItem(`post_${post.id}_reaction`);
+        }
+
+        // Update the post in parent component
+        onPostUpdated({
+          ...post,
+          userReaction: response.data.userReaction,
+          reactionCounts: response.data.reactionCounts
+        });
       }
     } catch (error) {
       // Revert changes on error
       setCurrentReaction(oldReaction);
       setReactionCounts(oldCounts);
       setError("Failed to update reaction");
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      // Cleanup
-      if (isHoveringReaction) {
-        setTimeout(() => setIsHoveringReaction(false), 1000);
+      
+      if (oldReaction) {
+        localStorage.setItem(`post_${post.id}_reaction`, oldReaction);
+      } else {
+        localStorage.removeItem(`post_${post.id}_reaction`);
       }
-      setShowReactionMenu(false);
     }
   };
 

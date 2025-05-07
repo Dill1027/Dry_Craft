@@ -62,9 +62,14 @@ function Home() {
   };
 
   const handlePostUpdated = (updatedPost) => {
-    setPosts(
-      posts.map((post) => (post.id === updatedPost.id ? updatedPost : post))
-    );
+    setPosts(posts.map((post) => 
+      post.id === updatedPost.id ? {
+        ...post,
+        ...updatedPost,
+        userReaction: updatedPost.userReaction,
+        reactionCounts: updatedPost.reactionCounts
+      } : post
+    ));
   };
 
   const handleLogout = () => {

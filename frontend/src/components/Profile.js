@@ -42,8 +42,19 @@ function Profile() {
     e.preventDefault();
     if (!image) return;
 
+    // Check if user exists and has ID
+    if (!user || !user.id) {
+      setError('User session expired. Please login again');
+      localStorage.removeItem('user');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError('');
       const formData = new FormData();
       formData.append('image', image);
 
@@ -53,15 +64,25 @@ function Profile() {
         }
       });
 
-      // Update local storage with new user data
-      const updatedUser = { ...user, profilePicture: response.data.profilePicture };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-
-      setSuccess('Profile picture updated successfully');
-      setTimeout(() => setSuccess(''), 3000);
+      // Only update if the request was successful
+      if (response.data && response.data.profilePicture) {
+        const updatedUser = { ...user, profilePicture: response.data.profilePicture };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setSuccess('Profile picture updated successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        throw new Error('Invalid server response');
+      }
     } catch (err) {
+      console.error('Error updating profile picture:', err);
       setError(err.response?.data?.message || 'Failed to update profile picture');
+      if (err.response?.status === 401) {
+        localStorage.removeItem('user');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
