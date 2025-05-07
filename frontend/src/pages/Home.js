@@ -12,9 +12,17 @@ function Home() {
   const [suggestedProfiles, setSuggestedProfiles] = useState([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState({});
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [retryCount, setRetryCount] = useState(0);
+  const [isCelebrating, setIsCelebrating] = useState(false);
+  const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
+  const [followedUsers, setFollowedUsers] = useState(new Set());
+
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = "/images/default-avatar.png";
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second delay between retries
 
   useEffect(() => {
     const handleOnline = () => setIsOffline(false);
