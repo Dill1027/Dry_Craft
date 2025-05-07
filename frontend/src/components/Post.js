@@ -60,6 +60,8 @@ function Post({
   };
 
   const loadMedia = async () => {
+    const abortController = new AbortController();
+    
     try {
       setVideoError(false);
       const newMediaUrls = {};
@@ -68,6 +70,7 @@ function Post({
         const mediaId = post.videoUrl.split("/").pop();
         try {
           const videoUrl = await getMediaUrl(mediaId, post.videoUrl, {
+            signal: abortController.signal,
             retries: 2,
             retryDelay: 1000,
             timeout: 20000
@@ -76,36 +79,48 @@ function Post({
             newMediaUrls.video = videoUrl;
           }
         } catch (error) {
-          console.error('Error loading video:', error);
-          newMediaUrls.video = getFullUrl(post.videoUrl);
+          if (!abortController.signal.aborted) {
+            console.error('Error loading video:', error);
+            newMediaUrls.video = getFullUrl(post.videoUrl);
+          }
         }
       }
 
-      if (post.imageUrls?.length) {
-        for (const url of post.imageUrls) {
+      if (!abortController.signal.aborted && post.imageUrls?.length) {
+        await Promise.all(post.imageUrls.map(async (url) => {
           const mediaId = url.split("/").pop();
           try {
-            const mediaUrl = await getMediaUrl(mediaId, url);
+            const mediaUrl = await getMediaUrl(mediaId, url, {
+              signal: abortController.signal
+            });
             if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
           } catch (error) {
-            console.error(`Error loading image ${mediaId}:`, error);
-            newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
+            if (!abortController.signal.aborted) {
+              console.error(`Error loading image ${mediaId}:`, error);
+              newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
+            }
           }
-        }
+        }));
       }
 
-      setMediaUrls(prevUrls => {
-        Object.values(prevUrls).forEach(url => {
-          if (url?.startsWith('blob:')) {
-            URL.revokeObjectURL(url);
-          }
+      if (!abortController.signal.aborted) {
+        setMediaUrls(prevUrls => {
+          Object.values(prevUrls).forEach(url => {
+            if (url?.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
+          return {...prevUrls, ...newMediaUrls};
         });
-        return {...prevUrls, ...newMediaUrls};
-      });
+      }
     } catch (error) {
-      console.error('Error in loadMedia:', error);
-      setError("Failed to load media content");
+      if (!abortController.signal.aborted) {
+        console.error('Error in loadMedia:', error);
+        setError("Failed to load media content");
+      }
     }
+
+    return () => abortController.abort();
   };
 
   const handleVideoError = async (e) => {

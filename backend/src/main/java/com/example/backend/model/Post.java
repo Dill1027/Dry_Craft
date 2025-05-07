@@ -155,6 +155,10 @@ public class Post {
         return reactionCounts;
     }
 
+    public void setReactionCounts(Map<String, Integer> reactionCounts) {
+        this.reactionCounts = reactionCounts;
+    }
+
     public Reaction getUserReaction(String userId) {
         return userReactions != null ? userReactions.get(userId) : null;
     }

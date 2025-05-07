@@ -5,13 +5,20 @@ const PLACEHOLDER_IMAGE = `${API_BASE_URL}/images/placeholder-image.png`;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
 
-const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
+const getMediaUrl = async (mediaId, originalUrl, options = {}) => {
+  const retryCount = options.retryCount || 0;
+  const signal = options.signal || new AbortController().signal;
+  
   try {
     const response = await axiosInstance.loadMedia(mediaId, {
-      timeout: 10000, // 10 second timeout
+      ...options,
+      signal,
+      timeout: options.timeout || 10000,
       retries: retryCount,
       onDownloadProgress: (progressEvent) => {
-        console.log(`Loading ${mediaId}: ${Math.round((progressEvent.loaded * 100) / progressEvent.total)}%`);
+        if (options.onProgress) {
+          options.onProgress(progressEvent);
+        }
       }
     });
 
@@ -22,19 +29,23 @@ const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
     return URL.createObjectURL(response.data);
 
   } catch (error) {
+    if (error.name === 'CanceledError' || error.name === 'AbortError') {
+      console.warn(`Media load canceled for ${mediaId}`);
+      return originalUrl ? getFullUrl(originalUrl) : PLACEHOLDER_IMAGE;
+    }
+
     console.error(`Media load error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
 
-    if (retryCount < MAX_RETRIES) {
+    if (retryCount < MAX_RETRIES && !signal.aborted) {
       await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * Math.pow(2, retryCount)));
-      return getMediaUrl(mediaId, originalUrl, retryCount + 1);
+      return getMediaUrl(mediaId, originalUrl, {
+        ...options,
+        retryCount: retryCount + 1,
+        signal
+      });
     }
 
-    if (originalUrl) {
-      console.warn(`Using fallback URL for ${mediaId}`);
-      return getFullUrl(originalUrl);
-    }
-
-    return error.response?.status === 404 ? PLACEHOLDER_IMAGE : null;
+    return originalUrl ? getFullUrl(originalUrl) : PLACEHOLDER_IMAGE;
   }
 };
 
