@@ -12,40 +12,60 @@ function Home() {
   const [suggestedProfiles, setSuggestedProfiles] = useState([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState({});
-  const [followedUsers, setFollowedUsers] = useState(() => {
-    const savedFollowedUsers = localStorage.getItem('followedUsers');
-    return savedFollowedUsers ? new Set(JSON.parse(savedFollowedUsers)) : new Set();
-  });
-  const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [retryCount, setRetryCount] = useState(0);
   const [isCelebrating, setIsCelebrating] = useState(false);
+  const [isHoveringAvatar, setIsHoveringAvatar] = useState(false);
+  const [followedUsers, setFollowedUsers] = useState(new Set());
+
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = "/images/default-avatar.png";
+  const maxRetries = 3;
+  const retryDelay = 1000; // 1 second delay between retries
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     fetchPosts();
     fetchSuggestedProfiles();
   }, []);
 
-  const fetchPosts = async (retryCount = 0) => {
+  const fetchPosts = async (attempt = 0) => {
     try {
       setError(null);
-      setLoading(true);
+      if (!isRefreshing) setLoading(true);
       const response = await axiosInstance.get("/api/posts");
       setPosts(response.data);
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
       console.error("Error fetching posts:", err);
       if (retryCount < 3 && err.message === "User not found") {
+        // Wait 1 second before retrying
         await new Promise(resolve => setTimeout(resolve, 1000));
         return fetchPosts(retryCount + 1);
       }
 
       if (err.code === "ERR_NETWORK") {
-        setError("Unable to connect to server. Please check your internet connection.");
+        setError(isOffline ? 
+          "You're offline. Please check your internet connection." :
+          "Server is unreachable. Please try again later."
+        );
       } else if (err.response?.status === 403) {
         navigate("/login");
       } else {
-        setError("Something went wrong while loading posts. Please try again later.");
+        setError("Failed to load posts. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -53,7 +73,7 @@ function Home() {
     }
   };
 
-  const fetchSuggestedProfiles = async () => {
+  const fetchSuggestedProfiles = async (attempt = 0) => {
     try {
       setProfilesLoading(true);
       const response = await axiosInstance.get('/api/users/suggestions');
@@ -70,8 +90,16 @@ function Home() {
       } else {
         setSuggestedProfiles([]);
       }
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
       console.error('Error fetching suggested profiles:', err);
+      
+      if (err.code === "ERR_NETWORK" && attempt < maxRetries) {
+        console.log(`Retrying fetch profiles... Attempt ${attempt + 1}`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        return fetchSuggestedProfiles(attempt + 1);
+      }
+
       setSuggestedProfiles([]);
     } finally {
       setProfilesLoading(false);
@@ -80,7 +108,8 @@ function Home() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    fetchPosts();
+    setRetryCount(0); // Reset retry count on manual refresh
+    fetchPosts(0);
   };
 
   const handlePostCreated = (newPost) => {
