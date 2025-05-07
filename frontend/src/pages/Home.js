@@ -9,12 +9,16 @@ function Home() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [suggestedProfiles, setSuggestedProfiles] = useState([]);
+  const [profilesLoading, setProfilesLoading] = useState(true);
+  const [followingStates, setFollowingStates] = useState({});
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = "/images/default-avatar.png";
 
   useEffect(() => {
     fetchPosts();
+    fetchSuggestedProfiles();
   }, []);
 
   const fetchPosts = async (retryCount = 0) => {
@@ -44,6 +48,30 @@ function Home() {
     }
   };
 
+  const fetchSuggestedProfiles = async () => {
+    try {
+      setProfilesLoading(true);
+      const response = await axiosInstance.get('/api/users/suggestions');
+      console.log('Suggested profiles response:', response.data); // Debug log
+      
+      if (Array.isArray(response.data)) {
+        setSuggestedProfiles(
+          response.data
+            .filter(profile => profile.id !== user?.id)
+            .slice(0, 5)
+        );
+      } else {
+        console.error('Invalid response format:', response.data);
+        setSuggestedProfiles([]);
+      }
+    } catch (err) {
+      console.error('Error fetching suggested profiles:', err);
+      setSuggestedProfiles([]);
+    } finally {
+      setProfilesLoading(false);
+    }
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchPosts();
@@ -70,6 +98,23 @@ function Home() {
   const handleLogout = () => {
     localStorage.removeItem("user");
     navigate("/login");
+  };
+
+  const handleFollow = async (profileId) => {
+    if (!user) return;
+
+    try {
+      setFollowingStates(prev => ({ ...prev, [profileId]: true }));
+      await axiosInstance.post(`/api/users/${profileId}/follow`, { followerId: user.id });
+      
+      // Update local state to reflect following
+      setSuggestedProfiles(profiles => 
+        profiles.filter(profile => profile.id !== profileId)
+      );
+    } catch (err) {
+      console.error('Error following user:', err);
+      setFollowingStates(prev => ({ ...prev, [profileId]: false }));
+    }
   };
 
   if (!user) {
@@ -255,7 +300,86 @@ function Home() {
         </div>
 
         <CreatePost onPostCreated={handlePostCreated} />
-        
+
+        {/* Suggested Profiles */}
+        <div className="bg-white rounded-xl shadow-md p-4">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">People you might know</h3>
+          {profilesLoading ? (
+            <div className="flex space-x-4 overflow-x-auto py-2">
+              {[1, 2, 3, 4, 5].map((_, index) => (
+                <div key={index} className="flex-shrink-0 w-40 animate-pulse">
+                  <div className="w-20 h-20 bg-gray-200 rounded-full mx-auto mb-3"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto mb-2"></div>
+                  <div className="h-3 bg-gray-200 rounded w-1/2 mx-auto"></div>
+                </div>
+              ))}
+            </div>
+          ) : suggestedProfiles.length > 0 ? (
+            <div className="flex space-x-4 overflow-x-auto py-2">
+              {suggestedProfiles.map((profile) => (
+                <div 
+                  key={profile.id} 
+                  className="flex-shrink-0 w-40 text-center"
+                >
+                  <div 
+                    className="group relative cursor-pointer transform transition-all duration-300 hover:scale-105"
+                    onClick={(e) => {
+                      if (e.target.tagName !== 'BUTTON') {
+                        navigate(`/profile/${profile.id}`);
+                      }
+                    }}
+                  >
+                    <div className="w-20 h-20 mx-auto mb-3 relative">
+                      <img
+                        src={profile.profilePicture ? 
+                          (profile.profilePicture.startsWith('/api/') ? 
+                            profile.profilePicture : 
+                            `/api/media/${profile.profilePicture}`
+                          ) : 
+                          defaultAvatarUrl
+                        }
+                        alt={`${profile.firstName}'s profile`}
+                        className="w-full h-full rounded-full object-cover border-2 border-purple-100 group-hover:border-purple-500 transition-colors"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = defaultAvatarUrl;
+                        }}
+                      />
+                    </div>
+                    <h4 className="font-medium text-gray-800 truncate">
+                      {profile.firstName} {profile.lastName}
+                    </h4>
+                    <p className="text-sm text-gray-500 truncate mb-2">{profile.email}</p>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleFollow(profile.id);
+                      }}
+                      disabled={followingStates[profile.id]}
+                      className={`px-4 py-1 rounded-full text-sm font-medium transition-all duration-300
+                        ${followingStates[profile.id]
+                          ? 'bg-purple-100 text-purple-500 cursor-default'
+                          : 'bg-purple-500 text-white hover:bg-purple-600 hover:shadow-md transform hover:-translate-y-0.5'
+                        }`}
+                    >
+                      {followingStates[profile.id] ? (
+                        <span className="flex items-center justify-center">
+                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                          </svg>
+                          Following
+                        </span>
+                      ) : 'Follow'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-center text-gray-500 py-4">No suggestions available</p>
+          )}
+        </div>
+
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
             Community Feed
