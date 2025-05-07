@@ -12,35 +12,58 @@ function Home() {
   const [suggestedProfiles, setSuggestedProfiles] = useState([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState({});
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
+  const retryDelay = 2000; // 2 seconds
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = "/images/default-avatar.png";
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     fetchPosts();
     fetchSuggestedProfiles();
   }, []);
 
-  const fetchPosts = async (retryCount = 0) => {
+  const fetchPosts = async (attempt = 0) => {
     try {
       setError(null);
-      setLoading(true);
+      if (!isRefreshing) setLoading(true);
       const response = await axiosInstance.get("/api/posts");
       setPosts(response.data);
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
       console.error("Error fetching posts:", err);
-      if (retryCount < 3 && err.message === "User not found") {
-        // Wait 1 second before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return fetchPosts(retryCount + 1);
+      
+      if (err.code === "ERR_NETWORK" && attempt < maxRetries) {
+        console.log(`Retrying fetch posts... Attempt ${attempt + 1}`);
+        setError(`Connection failed. Retrying... (${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        return fetchPosts(attempt + 1);
       }
 
       if (err.code === "ERR_NETWORK") {
-        setError("Unable to connect to server. Please check your internet connection.");
+        setError(isOffline ? 
+          "You're offline. Please check your internet connection." :
+          "Server is unreachable. Please try again later."
+        );
       } else if (err.response?.status === 403) {
         navigate("/login");
       } else {
-        setError("Something went wrong while loading posts. Please try again later.");
+        setError("Failed to load posts. Please try again.");
       }
     } finally {
       setLoading(false);
@@ -48,11 +71,10 @@ function Home() {
     }
   };
 
-  const fetchSuggestedProfiles = async () => {
+  const fetchSuggestedProfiles = async (attempt = 0) => {
     try {
       setProfilesLoading(true);
       const response = await axiosInstance.get('/api/users/suggestions');
-      console.log('Suggested profiles response:', response.data); // Debug log
       
       if (Array.isArray(response.data)) {
         setSuggestedProfiles(
@@ -64,8 +86,16 @@ function Home() {
         console.error('Invalid response format:', response.data);
         setSuggestedProfiles([]);
       }
+      setRetryCount(0); // Reset retry count on success
     } catch (err) {
       console.error('Error fetching suggested profiles:', err);
+      
+      if (err.code === "ERR_NETWORK" && attempt < maxRetries) {
+        console.log(`Retrying fetch profiles... Attempt ${attempt + 1}`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        return fetchSuggestedProfiles(attempt + 1);
+      }
+
       setSuggestedProfiles([]);
     } finally {
       setProfilesLoading(false);
@@ -74,7 +104,8 @@ function Home() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    fetchPosts();
+    setRetryCount(0); // Reset retry count on manual refresh
+    fetchPosts(0);
   };
 
   const handlePostCreated = (newPost) => {
