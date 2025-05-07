@@ -19,6 +19,7 @@ function Profile() {
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(user?.bio || '');
   const [bioError, setBioError] = useState('');
+  const [friends, setFriends] = useState(user?.friends || []);
 
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -128,6 +129,33 @@ function Profile() {
     }
   };
 
+  const handleRemoveFriend = async (friendId) => {
+    try {
+      await axiosInstance.post(`/api/users/${friendId}/unfollow`, { followerId: user.id });
+      
+      // Update local state
+      setFriends(friends.filter(friend => friend.id !== friendId));
+      
+      // Update user's friends list in localStorage
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      if (currentUser && currentUser.friends) {
+        currentUser.friends = currentUser.friends.filter(f => f.id !== friendId);
+        localStorage.setItem('user', JSON.stringify(currentUser));
+      }
+
+      // Update followedUsers in localStorage
+      const followedUsers = JSON.parse(localStorage.getItem('followedUsers') || '[]');
+      const updatedFollowedUsers = followedUsers.filter(id => id !== friendId);
+      localStorage.setItem('followedUsers', JSON.stringify(updatedFollowedUsers));
+
+      setSuccess('Friend removed successfully');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      setError('Failed to remove friend');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -148,6 +176,14 @@ function Profile() {
       return () => clearInterval(interval);
     }
   }, [user?.id]);
+
+  useEffect(() => {
+    // Update friends when user data changes
+    const updatedUser = JSON.parse(localStorage.getItem('user'));
+    if (updatedUser?.friends) {
+      setFriends(updatedUser.friends);
+    }
+  }, []);
 
   const fetchUserPosts = async () => {
     if (!user?.id) return;
@@ -417,6 +453,62 @@ function Profile() {
                   </p>
                 )}
               </div>
+            </div>
+
+            {/* Friends Section */}
+            <div className="mt-8">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6">Friends</h2>
+              {friends.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">No friends added yet</p>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {friends.map((friend) => (
+                    <div 
+                      key={friend.id}
+                      className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors relative group"
+                    >
+                      <div 
+                        onClick={() => navigate(`/profile/${friend.id}`)}
+                        className="flex items-center flex-1 cursor-pointer min-w-0"
+                      >
+                        <div className="w-10 h-10 rounded-full overflow-hidden mr-3">
+                          <img
+                            src={friend.profilePicture ? 
+                              (friend.profilePicture.startsWith('/api/') ? 
+                                friend.profilePicture : 
+                                `/api/media/${friend.profilePicture}`
+                              ) : 
+                              defaultAvatarUrl
+                            }
+                            alt={friend.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = defaultAvatarUrl;
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-800 truncate">{friend.name}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (window.confirm('Are you sure you want to remove this friend?')) {
+                            handleRemoveFriend(friend.id);
+                          }
+                        }}
+                        className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-red-100 rounded-full"
+                        title="Remove friend"
+                      >
+                        <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Posts Section */}

@@ -12,6 +12,10 @@ function Home() {
   const [suggestedProfiles, setSuggestedProfiles] = useState([]);
   const [profilesLoading, setProfilesLoading] = useState(true);
   const [followingStates, setFollowingStates] = useState({});
+  const [followedUsers, setFollowedUsers] = useState(() => {
+    const savedFollowedUsers = localStorage.getItem('followedUsers');
+    return savedFollowedUsers ? new Set(JSON.parse(savedFollowedUsers)) : new Set();
+  });
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = "/images/default-avatar.png";
@@ -57,7 +61,10 @@ function Home() {
       if (Array.isArray(response.data)) {
         setSuggestedProfiles(
           response.data
-            .filter(profile => profile.id !== user?.id)
+            .filter(profile => 
+              profile.id !== user?.id && 
+              !followedUsers.has(profile.id)
+            )
             .slice(0, 5)
         );
       } else {
@@ -112,10 +119,29 @@ function Home() {
       setFollowingStates(prev => ({ ...prev, [profileId]: true }));
       await axiosInstance.post(`/api/users/${profileId}/follow`, { followerId: user.id });
       
-      // Update local state to reflect following
+      // Update followedUsers in state and localStorage
+      const newFollowedUsers = new Set(followedUsers);
+      newFollowedUsers.add(profileId);
+      setFollowedUsers(newFollowedUsers);
+      localStorage.setItem('followedUsers', JSON.stringify([...newFollowedUsers]));
+
+      // Remove followed profile from suggestions
       setSuggestedProfiles(profiles => 
         profiles.filter(profile => profile.id !== profileId)
       );
+
+      // Update user's friends list in localStorage if needed
+      const currentUser = JSON.parse(localStorage.getItem('user'));
+      const followedProfile = suggestedProfiles.find(p => p.id === profileId);
+      if (currentUser && followedProfile) {
+        currentUser.friends = currentUser.friends || [];
+        currentUser.friends.push({
+          id: followedProfile.id,
+          name: `${followedProfile.firstName} ${followedProfile.lastName}`,
+          profilePicture: followedProfile.profilePicture
+        });
+        localStorage.setItem('user', JSON.stringify(currentUser));
+      }
     } catch (err) {
       console.error('Error following user:', err);
       setFollowingStates(prev => ({ ...prev, [profileId]: false }));
