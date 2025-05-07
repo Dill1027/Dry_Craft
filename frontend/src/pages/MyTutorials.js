@@ -105,72 +105,97 @@ function MyTutorials() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-100">
+        <div className="relative">
+          <div className="w-20 h-20 border-t-4 border-b-4 border-indigo-600 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-sm font-medium text-indigo-600">Loading</span>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <button
-          onClick={() => navigate('/tutorials')}
-          className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
-                   transition-all duration-300 hover:gap-3"
-        >
-          <svg 
-            className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300" 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50">
+      {/* Header with glass effect */}
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/70 border-b border-white/20 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+          <button
+            onClick={() => navigate('/tutorials')}
+            className="group flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
+                     transition-all duration-300 hover:gap-3"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span className="font-medium">Back to Tutorials</span>
-        </button>
-
-        <div className="flex justify-between items-center mb-12">
-          <div className="transform transition-all duration-500 hover:scale-[1.02]">
-            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
-              My Tutorials
-            </h1>
-            <p className="mt-2 text-lg text-gray-600">
-              Manage and share your creative tutorials
-            </p>
-          </div>
+            <svg 
+              className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">Back to Tutorials</span>
+          </button>
           
           <button
             onClick={() => navigate('/tutorials/create')}
-            className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg 
-                     hover:from-indigo-600 hover:to-purple-700 transform hover:-translate-y-0.5 
-                     transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+            className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg 
+                     hover:from-indigo-700 hover:to-purple-700 transform hover:-translate-y-0.5 
+                     transition-all duration-200 shadow-md hover:shadow-xl font-medium flex items-center gap-2"
           >
-            <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Create Tutorial
           </button>
         </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Page Title */}
+        <div className="mb-12 relative">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-indigo-200 to-purple-200 rounded-2xl blur-3xl opacity-30"></div>
+          <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-8 mb-12">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-700">
+              My Tutorials
+            </h1>
+            <p className="mt-3 text-lg text-gray-600 max-w-2xl">
+              Share your knowledge and creativity with the world. Manage your tutorials here.
+            </p>
+          </div>
+        </div>
+
+        {/* Tutorial Content */}
+        {error && (
+          <div className="mb-8 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
+            <p className="font-medium">{error}</p>
+            <p className="mt-1">Please try refreshing the page or check your connection.</p>
+          </div>
+        )}
 
         {tutorials.length === 0 ? (
-          <div className="text-center py-16 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 
-                        transform hover:scale-[1.01] transition-all duration-500">
-            <div className="mb-6 animate-bounce">
-              <svg className="w-16 h-16 mx-auto text-indigo-500/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" 
-                      d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-              </svg>
+          <div className="text-center py-20 px-6 bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 
+                         transform hover:scale-[1.01] transition-all duration-500">
+            <div className="mb-8 relative mx-auto w-32 h-32">
+              <div className="absolute inset-0 bg-indigo-100 rounded-full animate-ping opacity-25"></div>
+              <div className="relative flex items-center justify-center w-full h-full">
+                <svg className="w-20 h-20 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" 
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+              </div>
             </div>
-            <h3 className="text-2xl font-semibold text-gray-800 mb-2">No tutorials yet</h3>
-            <p className="text-gray-600 mb-6">Start sharing your knowledge by creating your first tutorial!</p>
+            <h3 className="text-3xl font-bold text-gray-800 mb-3">No tutorials yet</h3>
+            <p className="text-gray-600 mb-8 max-w-md mx-auto">
+              Share your unique perspective and knowledge by creating your first tutorial!
+            </p>
             <button
               onClick={() => navigate('/tutorials/create')}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg 
-                       hover:from-indigo-600 hover:to-purple-700 transform hover:-translate-y-0.5 
-                       transition-all duration-200 shadow-md hover:shadow-lg inline-flex items-center gap-2"
+              className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl 
+                       hover:from-indigo-700 hover:to-purple-700 transform hover:-translate-y-1 
+                       transition-all duration-300 shadow-lg hover:shadow-2xl inline-flex items-center gap-3 font-medium"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
               </svg>
               Create Your First Tutorial
@@ -181,44 +206,76 @@ function MyTutorials() {
             {tutorials.map((tutorial, index) => (
               <div 
                 key={tutorial.id} 
-                className="transform hover:-translate-y-2 transition-all duration-300"
+                className="group"
                 style={{ 
-                  animationDelay: `${index * 100}ms`,
-                  animation: 'fadeInUp 0.5s ease-out forwards'
+                  opacity: 0,
+                  transform: 'translateY(20px)',
+                  animation: `fadeInUp 0.7s ease-out forwards ${index * 0.1}s`
                 }}
               >
-                <TutorialCard
-                  tutorial={tutorial}
-                  isManageable={true}
-                  onEdit={() => handleEdit(tutorial)}
-                  onDelete={(deletedId) => {
-                    setTutorials(tutorials.filter(t => t.id !== deletedId));
-                  }}
-                />
-              </div>
+                {/* <div className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-white/50 group-hover:-translate-y-2 h-full flex flex-col relative"> */}
+                  {/* Decorative elements */}
+                  <div className="h-2 bg-gradient-to-r "></div>
+                  <div className="absolute top-0 right-0 w-32 h-32  to-indigo-300 rounded-full opacity-20 -mr-16 -mt-16 blur-2xl"></div>
+                  <div className="absolute bottom-0 left-0 w-24 h-24  rounded-full opacity-20 -ml-12 -mb-12 blur-xl"></div>
+                  
+                  <div className="relative z-10">
+                    <TutorialCard
+                      tutorial={tutorial}
+                      isManageable={true}
+                      onEdit={() => handleEdit(tutorial)}
+                      onDelete={(deletedId) => {
+                        setTutorials(tutorials.filter(t => t.id !== deletedId));
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Bottom gradient line */}
+                  <div className="h-1 bg-gradient-to-r  mt-auto"></div>
+                </div>
+              // </div>
             ))}
           </div>
         )}
 
+        {/* Edit Modal with Glass Morphism */}
         {editingTutorial && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
-            <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-6">
-                Edit Tutorial
-              </h2>
+          <div className="fixed inset-0 bg-indigo-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div 
+              className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/50 p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+              style={{
+                animation: 'fadeInUp 0.3s ease-out forwards'
+              }}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">
+                  Edit Tutorial
+                </h2>
+                <button 
+                  onClick={() => setEditingTutorial(null)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
               
               {updateError && (
-                <div className="mb-4 p-3 bg-red-100 text-red-600 rounded-lg">{updateError}</div>
+                <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded">
+                  <p className="font-medium">{updateError}</p>
+                </div>
               )}
 
-              <form onSubmit={handleUpdate} className="space-y-4">
+              <form onSubmit={handleUpdate} className="space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
                   <input
                     type="text"
                     value={editFormData.title}
                     onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                    placeholder="Tutorial title"
                     required
                   />
                 </div>
@@ -229,100 +286,156 @@ function MyTutorials() {
                     value={editFormData.description}
                     onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
                     rows="4"
-                    className="w-full p-2 border rounded focus:ring-2 focus:ring-blue-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                    placeholder="Describe your tutorial"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Steps</label>
-                  {editFormData.steps.map((step, index) => (
-                    <div key={index} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={step}
-                        onChange={(e) => {
-                          const newSteps = [...editFormData.steps];
-                          newSteps[index] = e.target.value;
-                          setEditFormData({...editFormData, steps: newSteps});
-                        }}
-                        className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                        placeholder={`Step ${index + 1}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeStep(index)}
-                        className="px-3 py-1 text-red-500 hover:bg-red-50 rounded"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addStep}
-                    className="text-blue-500 hover:text-blue-600"
-                  >
-                    + Add Step
-                  </button>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Steps</label>
+                    <button
+                      type="button"
+                      onClick={addStep}
+                      className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add Step
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3 mb-2">
+                    {editFormData.steps.map((step, index) => (
+                      <div key={index} className="flex gap-2 group">
+                        <div className="flex-shrink-0 pt-2 text-indigo-600 font-medium">{index + 1}.</div>
+                        <input
+                          type="text"
+                          value={step}
+                          onChange={(e) => {
+                            const newSteps = [...editFormData.steps];
+                            newSteps[index] = e.target.value;
+                            setEditFormData({...editFormData, steps: newSteps});
+                          }}
+                          className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder={`Describe step ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStep(index)}
+                          className="px-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Materials</label>
-                  {editFormData.materials.map((material, index) => (
-                    <div key={index} className="flex gap-2 mb-2">
-                      <input
-                        type="text"
-                        value={material}
-                        onChange={(e) => {
-                          const newMaterials = [...editFormData.materials];
-                          newMaterials[index] = e.target.value;
-                          setEditFormData({...editFormData, materials: newMaterials});
-                        }}
-                        className="flex-1 p-2 border rounded focus:ring-2 focus:ring-blue-500"
-                        placeholder={`Material ${index + 1}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeMaterial(index)}
-                        className="px-3 py-1 text-red-500 hover:bg-red-50 rounded"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={addMaterial}
-                    className="text-blue-500 hover:text-blue-600"
-                  >
-                    + Add Material
-                  </button>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="block text-sm font-medium text-gray-700">Materials</label>
+                    <button
+                      type="button"
+                      onClick={addMaterial}
+                      className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add Material
+                    </button>
+                  </div>
+                  
+                  <div className="space-y-3 mb-2">
+                    {editFormData.materials.map((material, index) => (
+                      <div key={index} className="flex gap-2 group">
+                        <div className="flex-shrink-0 pt-2 text-purple-600">•</div>
+                        <input
+                          type="text"
+                          value={material}
+                          onChange={(e) => {
+                            const newMaterials = [...editFormData.materials];
+                            newMaterials[index] = e.target.value;
+                            setEditFormData({...editFormData, materials: newMaterials});
+                          }}
+                          className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                          placeholder={`Material ${index + 1}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeMaterial(index)}
+                          className="px-2 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
-                <div className="flex justify-end gap-3 mt-6">
+                <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
                   <button
                     type="button"
                     onClick={() => setEditingTutorial(null)}
-                    className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded"
+                    className="px-5 py-2.5 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={updating}
-                    className={`px-4 py-2 rounded text-white ${
-                      updating ? 'bg-gray-400' : 'bg-blue-500 hover:bg-blue-600'
+                    className={`px-5 py-2.5 rounded-lg text-white font-medium ${
+                      updating 
+                        ? 'bg-gray-400 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transform hover:-translate-y-0.5 transition-all duration-200 shadow-md hover:shadow-lg'
                     }`}
                   >
-                    {updating ? 'Updating...' : 'Save Changes'}
+                    {updating ? (
+                      <span className="flex items-center gap-2">
+                        <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Updating...
+                      </span>
+                    ) : 'Save Changes'}
                   </button>
                 </div>
               </form>
             </div>
           </div>
         )}
-      </div>
+      </main>
+
+      {/* Add CSS for animations */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }
