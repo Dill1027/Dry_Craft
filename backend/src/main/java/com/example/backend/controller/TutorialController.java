@@ -106,10 +106,21 @@ public class TutorialController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Tutorial> updateTutorial(
-            @PathVariable String id,
-            @RequestBody Tutorial tutorial) {
+        @PathVariable String id,
+        @RequestParam("title") String title,
+        @RequestParam("description") String description,
+        @RequestParam("craftType") String craftType,
+        @RequestParam(value = "steps", required = false) List<String> steps,
+        @RequestParam(value = "materials", required = false) List<String> materials,
+        @RequestParam(value = "images", required = false) List<MultipartFile> images,
+        @RequestParam(value = "video", required = false) MultipartFile video,
+        @RequestParam(value = "keepExistingImages", defaultValue = "true") boolean keepExistingImages,
+        @RequestParam(value = "keepExistingVideo", defaultValue = "true") boolean keepExistingVideo
+    ) {
         try {
-            Tutorial updatedTutorial = tutorialService.updateTutorial(id, tutorial);
+            Tutorial updatedTutorial = tutorialService.updateTutorial(
+                id, title, description, steps, materials, craftType,
+                video, images, keepExistingImages, keepExistingVideo);
             return ResponseEntity.ok(updatedTutorial);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();

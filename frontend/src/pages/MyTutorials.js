@@ -202,38 +202,18 @@ function MyTutorials() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {tutorials.map((tutorial, index) => (
-              <div 
-                key={tutorial.id} 
-                className="group"
-                style={{ 
-                  opacity: 0,
-                  transform: 'translateY(20px)',
-                  animation: `fadeInUp 0.7s ease-out forwards ${index * 0.1}s`
-                }}
-              >
-                {/* <div className="bg-white/90 backdrop-blur-sm rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-white/50 group-hover:-translate-y-2 h-full flex flex-col relative"> */}
-                  {/* Decorative elements */}
-                  <div className="h-2 bg-gradient-to-r "></div>
-                  <div className="absolute top-0 right-0 w-32 h-32  to-indigo-300 rounded-full opacity-20 -mr-16 -mt-16 blur-2xl"></div>
-                  <div className="absolute bottom-0 left-0 w-24 h-24  rounded-full opacity-20 -ml-12 -mb-12 blur-xl"></div>
-                  
-                  <div className="relative z-10">
-                    <TutorialCard
-                      tutorial={tutorial}
-                      isManageable={true}
-                      onEdit={() => handleEdit(tutorial)}
-                      onDelete={(deletedId) => {
-                        setTutorials(tutorials.filter(t => t.id !== deletedId));
-                      }}
-                    />
-                  </div>
-                  
-                  {/* Bottom gradient line */}
-                  <div className="h-1 bg-gradient-to-r  mt-auto"></div>
-                </div>
-              // </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {tutorials.map(tutorial => (
+              <div key={tutorial.id} className="transform transition-all duration-300 hover:scale-[1.02]">
+                <TutorialCard
+                  tutorial={tutorial}
+                  isManageable={true}
+                  onEdit={() => handleEdit(tutorial)}
+                  onDelete={(deletedId) => {
+                    setTutorials(tutorials.filter(t => t.id !== deletedId));
+                  }}
+                />
+              </div>
             ))}
           </div>
         )}
