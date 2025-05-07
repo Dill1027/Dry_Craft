@@ -3,15 +3,7 @@ package com.example.backend.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.backend.model.User;
@@ -19,17 +11,8 @@ import com.example.backend.repository.UserRepository;
 import com.example.backend.service.UserService;
 import com.mongodb.client.gridfs.GridFSBucket;
 
-<<<<<<< HEAD
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
-=======
-import java.util.Collections;
-import java.util.Map;
->>>>>>> 73105fdb7998db31e45eb70a7fd497fd334c7dbb
 
 @RestController
 @RequestMapping("/api/users")
@@ -70,36 +53,33 @@ public class UserController {
 
     @PutMapping("/update-name")
     public ResponseEntity<?> updateName(@RequestBody UpdateNameRequest request, Authentication authentication) {
-        User user = userRepository.findByEmail(authentication.getName())
-            .orElseThrow(() -> new RuntimeException("User not found"));
-        
-        user.setFirstName(request.getFirstName());
-        user.setLastName(request.getLastName());
-        userRepository.save(user);
-        
-        return ResponseEntity.ok().build();
+        try {
+            User user = userRepository.findByEmail(authentication.getName())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            user.setFirstName(request.getFirstName());
+            user.setLastName(request.getLastName());
+            userRepository.save(user);
+            
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
-<<<<<<< HEAD
     @GetMapping("/suggestions") 
     public ResponseEntity<List<Map<String, Object>>> getSuggestedUsers() {
-        try {
-            List<User> users = userRepository.findAll();
-            List<Map<String, Object>> processedUsers = users.stream()
-                .map(user -> {
-                    Map<String, Object> processedUser = new HashMap<>();
-                    processedUser.put("id", user.getId());
-                    processedUser.put("firstName", user.getFirstName());
-                    processedUser.put("lastName", user.getLastName());
-                    processedUser.put("email", user.getEmail());
-                    processedUser.put("profilePicture", user.getProfilePicture());
-                    return processedUser;
-                })
-                .collect(Collectors.toList());
-            return ResponseEntity.ok(processedUsers);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
+        List<User> users = userRepository.findAll();
+        List<Map<String, Object>> suggestions = users.stream()
+            .map(user -> {
+                Map<String, Object> userMap = new HashMap<>();
+                userMap.put("id", user.getId());
+                userMap.put("name", user.getFirstName() + " " + user.getLastName());
+                userMap.put("profilePicture", user.getProfilePicture());
+                return userMap;
+            })
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(suggestions);
     }
 
     @PostMapping("/{userId}/follow")
@@ -126,22 +106,23 @@ public class UserController {
             userRepository.save(userToFollow);
             
             return ResponseEntity.ok().build();
-=======
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PutMapping("/{userId}/bio")
     public ResponseEntity<?> updateBio(@PathVariable String userId, @RequestBody UpdateBioRequest request) {
         try {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new RuntimeException("User not found"));
             user.setBio(request.getBio());
-            userRepository.save(user);  // Fixed: removed incorrect '=' sign
+            userRepository.save(user);
             return ResponseEntity.ok(Collections.singletonMap("bio", user.getBio()));
->>>>>>> 73105fdb7998db31e45eb70a7fd497fd334c7dbb
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-<<<<<<< HEAD
-=======
 
     @GetMapping("/{userId}/bio")
     public ResponseEntity<?> getBio(@PathVariable String userId) {
@@ -153,7 +134,6 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
     }
->>>>>>> 73105fdb7998db31e45eb70a7fd497fd334c7dbb
 }
 
 class ProfilePictureResponse {
@@ -165,10 +145,6 @@ class ProfilePictureResponse {
 
     public String getProfilePicture() {
         return profilePicture;
-    }
-
-    public void setProfilePicture(String profilePicture) {
-        this.profilePicture = profilePicture;
     }
 }
 
