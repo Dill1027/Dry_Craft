@@ -15,7 +15,6 @@ public class PostResponse {
     private String videoUrl;
     private List<String> imageUrls = new ArrayList<>();
     private List<String> mediaIds = new ArrayList<>();
-    private int likes;
     private List<String> comments = new ArrayList<>();
     private LocalDateTime createdAt;
     private int likeCount;
@@ -33,17 +32,23 @@ public class PostResponse {
         this.videoUrl = post.getVideoUrl();
         this.imageUrls = post.getImageUrls();
         this.mediaIds = post.getMediaIds();
-        this.likes = post.getLikes();
         this.comments = post.getComments();
         this.createdAt = post.getCreatedAt();
     }
 
     public PostResponse(Post post, String currentUserId) {
-        this(post); // Call the other constructor first
-        this.userReaction = post.getUserReaction(currentUserId);
-        this.reactionCounts = post.getReactionCounts();
+        this.id = post.getId();
+        this.userId = post.getUserId();
+        this.content = post.getContent();
+        this.videoUrl = post.getVideoUrl();
+        this.imageUrls = post.getImageUrls();
+        this.mediaIds = post.getMediaIds();
+        this.comments = post.getComments();
+        this.createdAt = post.getCreatedAt();
         this.likeCount = post.getLikeCount();
         this.isLiked = post.isLikedByUser(currentUserId);
+        this.userReaction = post.getUserReaction(currentUserId);
+        this.reactionCounts = post.getReactionCounts();
     }
 
     // Getters and setters
@@ -109,15 +114,6 @@ public class PostResponse {
 
     public void setMediaIds(List<String> mediaIds) {
         this.mediaIds = mediaIds;
-    }
-
-    public int getLikes() {
-        return likes;
-    }
-
-    public void setLikes(int likes) {
-        this.likes = likes;
-        this.likeCount = likes; // Keep both fields in sync
     }
 
     public List<String> getComments() {

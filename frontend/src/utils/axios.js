@@ -85,20 +85,42 @@ axiosInstance.revokeObjectURL = (url) => {
   }
 };
 
-// Add new method for media uploads with custom timeout
-axiosInstance.uploadMedia = (url, data, options = {}) => {
-  return axiosInstance({
-    url,
-    method: 'POST',
-    data,
-    timeout: 300000, // Increased to 5 minutes for large uploads
-    maxContentLength: Infinity,
-    maxBodyLength: Infinity,
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-    ...options,
-  });
+// Simplified upload method with chunking and retry logic
+axiosInstance.uploadMedia = async (url, data, options = {}) => {
+  const maxRetries = options.retries || 3;
+  const chunkSize = 5 * 1024 * 1024; // 5MB chunks
+  let attempt = 0;
+
+  const upload = async () => {
+    try {
+      return await axiosInstance({
+        url,
+        method: 'POST',
+        data,
+        timeout: options.timeout || 300000, // 5 minutes default
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Accept': '*/*'
+        },
+        ...options,
+        onUploadProgress: (progressEvent) => {
+          options.onUploadProgress?.(progressEvent);
+        }
+      });
+    } catch (error) {
+      if (attempt < maxRetries && (error.code === 'ECONNRESET' || error.code === 'ERR_NETWORK')) {
+        attempt++;
+        console.log(`Upload retry attempt ${attempt} of ${maxRetries}`);
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        return upload();
+      }
+      throw error;
+    }
+  };
+
+  return upload();
 };
 
 // Add new method for interaction requests with shorter timeout
@@ -140,6 +162,24 @@ axiosInstance.loadMedia = (mediaId, options = {}) => {
     }
   }).finally(() => {
     clearTimeout(timeoutId);
+  });
+};
+
+// Add profile picture upload method with optimized configuration
+axiosInstance.uploadProfilePicture = async (userId, imageFile) => {
+  const formData = new FormData();
+  formData.append('image', imageFile);
+
+  return axiosInstance({
+    url: `/api/users/${userId}/profile-picture`,
+    method: 'PUT',
+    data: formData,
+    timeout: 60000,
+    maxBodyLength: Infinity,
+    maxContentLength: Infinity,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
   });
 };
 

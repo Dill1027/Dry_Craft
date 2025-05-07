@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.logging.Logger;
@@ -91,7 +92,7 @@ public class PostService {
         return null;
     }
 
-    public PostResponse createPost(String userId, String content, List<MultipartFile> images, MultipartFile video) {
+    public PostResponse createPost(String userId, String content, List<MultipartFile> images, MultipartFile video) throws IOException {
         if ((video == null && (images == null || images.isEmpty())) && content.isEmpty()) {
             throw new IllegalArgumentException("Post must have content, images, or a video");
         }
@@ -100,7 +101,9 @@ public class PostService {
         post.setUserId(userId);
         post.setContent(content);
         post.setCreatedAt(LocalDateTime.now());
-        post.setLikes(0);
+        post.setLikedByUsers(new HashSet<>()); // Initialize empty set instead of using setLikes
+        post.setUserReactions(new HashMap<>()); // Initialize empty reactions map
+        post.setReactionCounts(new HashMap<>()); // Initialize empty reaction counts
         post.setComments(new ArrayList<>());
         List<String> mediaIds = new ArrayList<>();
 
