@@ -20,6 +20,11 @@ function TutorialForm() {
   const [progress, setProgress] = useState(0);
   const [retrying, setRetrying] = useState(false);
   const [uploadData, setUploadData] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState({
+    video: 0,
+    images: 0,
+    total: 0
+  });
 
   // Add craft types constant
   const craftTypes = [
@@ -81,8 +86,9 @@ function TutorialForm() {
       URL.revokeObjectURL(videoPreviewUrl);
     }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setError('Video must be less than 50MB');
+    // Update size limit to 500MB (500 * 1024 * 1024 bytes)
+    if (file.size > 500 * 1024 * 1024) {
+      setError('Video must be less than 500MB');
       return;
     }
 
@@ -130,6 +136,35 @@ function TutorialForm() {
     await submitTutorial();
   };
 
+  const uploadInChunks = async (file, onProgress) => {
+    const chunkSize = 1024 * 1024 * 2; // 2MB chunks
+    const chunks = Math.ceil(file.size / chunkSize);
+    const formData = new FormData();
+    
+    for (let i = 0; i < chunks; i++) {
+      const chunk = file.slice(
+        i * chunkSize,
+        Math.min(i * chunkSize + chunkSize, file.size)
+      );
+      formData.set('chunk', chunk);
+      formData.set('index', i);
+      formData.set('total', chunks);
+      
+      try {
+        await axiosInstance.post('/api/media/chunk', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (e) => {
+            const chunkProgress = (e.loaded / e.total) * 100;
+            const totalProgress = ((i + (chunkProgress / 100)) / chunks) * 100;
+            onProgress(Math.round(totalProgress));
+          }
+        });
+      } catch (error) {
+        throw new Error(`Failed to upload chunk ${i + 1}/${chunks}`);
+      }
+    }
+  };
+
   const submitTutorial = async (isRetry = false) => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) {
@@ -173,11 +208,50 @@ function TutorialForm() {
         }
       }
 
-      // Append processed media
-      processedImages.forEach(img => formDataToSend.append('images', img));
+      // Handle video upload first if present
       if (video) {
-        formDataToSend.append('video', video);
+        try {
+          await uploadInChunks(video, (progress) => {
+            setUploadProgress(prev => ({
+              ...prev,
+              video: progress,
+              total: (progress + (prev.images || 0)) / 2
+            }));
+          });
+        } catch (error) {
+          setError('Video upload failed. Please try again.');
+          setLoading(false);
+          return;
+        }
       }
+
+      // Handle images
+      if (processedImages.length > 0) {
+        const imagePromises = processedImages.map(async (img, index) => {
+          await uploadInChunks(img, (progress) => {
+            setUploadProgress(prev => {
+              const imageProgress = prev.images || 0;
+              const newImageProgress = (imageProgress + (progress / processedImages.length));
+              return {
+                ...prev,
+                images: newImageProgress,
+                total: (newImageProgress + (prev.video || 0)) / 2
+              };
+            });
+          });
+        });
+
+        try {
+          await Promise.all(imagePromises);
+        } catch (error) {
+          setError('Image upload failed. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Update the main progress bar based on total progress
+      setProgress(uploadProgress.total);
 
       // Add other data
       const filteredSteps = formData.steps.filter(step => step.trim());
@@ -313,6 +387,42 @@ function TutorialForm() {
     </div>
   );
 
+  const renderProgress = () => (
+    <div className="mb-4">
+      {video && (
+        <div className="mb-2">
+          <span className="text-sm text-gray-600">Video: {uploadProgress.video.toFixed(1)}%</span>
+          <div className="h-2 bg-gray-200 rounded-full">
+            <div 
+              className="h-2 bg-indigo-600 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress.video}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {images.length > 0 && (
+        <div className="mb-2">
+          <span className="text-sm text-gray-600">Images: {uploadProgress.images.toFixed(1)}%</span>
+          <div className="h-2 bg-gray-200 rounded-full">
+            <div 
+              className="h-2 bg-purple-600 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress.images}%` }}
+            />
+          </div>
+        </div>
+      )}
+      <div>
+        <span className="text-sm text-gray-600">Total Progress: {uploadProgress.total.toFixed(1)}%</span>
+        <div className="h-2 bg-gray-200 rounded-full">
+          <div 
+            className="h-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-300"
+            style={{ width: `${uploadProgress.total}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       <div className="max-w-4xl mx-auto animate-fadeIn">
@@ -335,6 +445,7 @@ function TutorialForm() {
           </h2>
 
           {error && renderError()}
+          {loading && renderProgress()}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
@@ -556,7 +667,7 @@ function TutorialForm() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Video (Optional)
-                      <span className="text-xs text-gray-500 ml-2">Max 50MB, 30 sec</span>
+                      <span className="text-xs text-gray-500 ml-2">Max 500MB, 30 sec</span>
                     </label>
                     <input
                       type="file"
