@@ -384,4 +384,23 @@ public class PostService {
         
         return convertToPostResponse(post);
     }
+
+    public PostResponse addReply(String postId, String userId, String content, String parentCommentId) {
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
+
+        List<Comment> comments = post.getComments();
+        Comment parentComment = comments.stream()
+                .filter(c -> c.getId().equals(parentCommentId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Parent comment not found"));
+
+        User user = getUserDetails(userId);
+        Comment reply = new Comment(userId, content, user.getFullName());
+        
+        parentComment.addReply(reply);
+        post = postRepository.save(post);
+        
+        return convertToPostResponse(post);
+    }
 }

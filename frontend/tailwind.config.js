@@ -49,6 +49,8 @@ module.exports = {
         shake: 'shake 0.5s ease-in-out',
         shimmer: 'shimmer 2s infinite linear',
         'fadeInUp': 'fadeInUp 0.5s ease-out forwards',
+        'slide-in-right': 'slideInRight 0.3s ease-out',
+        'slide-out-right': 'slideOutRight 0.3s ease-out',
       },
       keyframes: {
         fadeIn: {
@@ -97,6 +99,14 @@ module.exports = {
             opacity: '1',
             transform: 'translateY(0)'
           },
+        },
+        slideInRight: {
+          '0%': { transform: 'translateX(100%)', opacity: 0 },
+          '100%': { transform: 'translateX(0)', opacity: 1 },
+        },
+        slideOutRight: {
+          '0%': { transform: 'translateX(0)', opacity: 1 },
+          '100%': { transform: 'translateX(100%)', opacity: 0 },
         },
       },
       backgroundImage: {

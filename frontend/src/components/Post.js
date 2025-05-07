@@ -34,6 +34,9 @@ function Post({
   const [isHoveringReaction, setIsHoveringReaction] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [commentSuccess, setCommentSuccess] = useState(null);
   const user = JSON.parse(localStorage.getItem("user"));
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -435,6 +438,70 @@ function Post({
       setError('Failed to share post');
       setTimeout(() => setError(null), 3000);
     }
+  };
+
+  const handleReply = async (commentIndex) => {
+    if (!replyContent.trim()) return;
+
+    try {
+      if (!user) {
+        setError("Please login to reply to comments");
+        setTimeout(() => setError(null), 3000);
+        return;
+      }
+
+      const response = await axiosInstance.post(
+        `/api/posts/${post.id}/comments`,
+        null,
+        {
+          params: {
+            userId: user.id,
+            content: replyContent.trim(),
+            parentCommentIndex: commentIndex
+          }
+        }
+      );
+
+      setComments(response.data.comments);
+      setReplyContent('');
+      setReplyingTo(null);
+      setCommentSuccess('Reply added successfully');
+      setTimeout(() => setCommentSuccess(null), 3000);
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      setError(error.response?.data?.message || "Failed to add reply");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  const parseComment = (comment) => {
+    if (!comment) return null;
+    if (typeof comment === 'object') return comment;
+
+    try {
+      const parts = comment.split('|');
+      if (parts.length === 2) {
+        // Regular comment
+        const [userId, rest] = parts;
+        const [authorName, content] = rest.split(': ');
+        return { userId, authorName, content: content || '', isReply: false };
+      } else if (parts.length === 3) {
+        // Reply comment
+        const [parentIndex, userId, rest] = parts;
+        const [authorName, content] = rest.split(': ');
+        return { 
+          userId, 
+          authorName, 
+          content: content || '', 
+          isReply: true, 
+          parentIndex: parseInt(parentIndex) 
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing comment:', error);
+      return null;
+    }
+    return null;
   };
 
   return (
@@ -886,24 +953,58 @@ function Post({
                         </>
                       )}
                     </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <button
+                        onClick={() => setReplyingTo(index)}
+                        className="text-sm text-blue-500 hover:text-blue-600 transition-colors duration-200"
+                      >
+                        Reply
+                      </button>
+                      {replyingTo === index && (
+                        <div className="flex-1 flex gap-2">
+                          <input
+                            type="text"
+                            value={replyContent}
+                            onChange={(e) => setReplyContent(e.target.value)}
+                            className="flex-1 p-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Write a reply..."
+                          />
+                          <button
+                            onClick={() => handleReply(index)}
+                            className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
+                          >
+                            Reply
+                          </button>
+                          <button
+                            onClick={() => setReplyingTo(null)}
+                            className="px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ))}
                 
                 {comments.length > 2 && (
                   <button
                     onClick={handleCommentClick}
-                    className="text-sm text-blue-500 hover:text-blue-600 mb-2 transition-colors duration-200 flex items-center justify-center w-full py-2 rounded-lg hover:bg-blue-50"
+                    className="w-full px-4 py-2.5 text-sm font-medium text-purple-600 
+                              bg-purple-50/50 backdrop-blur-sm rounded-xl hover:bg-purple-50 
+                              transition-all duration-300 flex items-center justify-center gap-2
+                              border border-purple-100 hover:border-purple-200"
                   >
                     {showAllComments ? (
                       <>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7" />
                         </svg>
                         Show less comments
                       </>
                     ) : (
                       <>
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
                         </svg>
                         Show {comments.length - 2} more comments
@@ -911,33 +1012,6 @@ function Post({
                     )}
                   </button>
                 )}
-                
-                <div className="flex gap-2 mt-3">
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Write a comment..."
-                      className="w-full p-3 border border-gray-200 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent pl-4 pr-12 transition-all duration-200"
-                      onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
-                    />
-                    <button
-                      onClick={handleAddComment}
-                      disabled={!newComment.trim()}
-                      className={`absolute right-2 top-1/2 transform -translate-y-1/2 p-1 rounded-full ${
-                        !newComment.trim() 
-                          ? "text-gray-400 cursor-not-allowed" 
-                          : "text-blue-500 hover:bg-blue-100 transition-colors duration-200"
-                      }`}
-                      aria-label="Post comment"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -948,24 +1022,9 @@ function Post({
 }
 
 Post.propTypes = {
-  post: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    userId: PropTypes.string.isRequired,
-    userName: PropTypes.string,
-    userProfilePicture: PropTypes.string,
-    content: PropTypes.string,
-    videoUrl: PropTypes.string,
-    imageUrls: PropTypes.arrayOf(PropTypes.string),
-    likes: PropTypes.number,
-    comments: PropTypes.arrayOf(PropTypes.string),
-    createdAt: PropTypes.string,
-    likeCount: PropTypes.number,
-    isLiked: PropTypes.bool,
-    userReaction: PropTypes.string,
-    reactionCounts: PropTypes.object
-  }).isRequired,
+  post: PropTypes.object.isRequired,
   onPostDeleted: PropTypes.func,
-  onPostUpdated: PropTypes.func
+  onPostUpdated: PropTypes.func,
 };
 
 export default Post;
