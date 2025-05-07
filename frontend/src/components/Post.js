@@ -60,29 +60,25 @@ function Post({
   };
 
   const loadMedia = async () => {
+    const newMediaUrls = {};
     const abortController = new AbortController();
-    
-    try {
-      setVideoError(false);
-      const newMediaUrls = {};
 
+    try {
       if (post.videoUrl) {
         const mediaId = post.videoUrl.split("/").pop();
         try {
           const videoUrl = await getMediaUrl(mediaId, post.videoUrl, {
             signal: abortController.signal,
-            retries: 2,
-            retryDelay: 1000,
-            timeout: 20000
+            timeout: 60000 // Set initial timeout to 60 seconds for videos
           });
           if (videoUrl) {
             newMediaUrls.video = videoUrl;
-          }
-        } catch (error) {
-          if (!abortController.signal.aborted) {
-            console.error('Error loading video:', error);
+          } else {
             newMediaUrls.video = getFullUrl(post.videoUrl);
           }
+        } catch (error) {
+          console.error('Video load failed:', error);
+          newMediaUrls.video = getFullUrl(post.videoUrl);
         }
       }
 
@@ -91,7 +87,8 @@ function Post({
           const mediaId = url.split("/").pop();
           try {
             const mediaUrl = await getMediaUrl(mediaId, url, {
-              signal: abortController.signal
+              signal: abortController.signal,
+              timeout: 30000 // Set initial timeout to 30 seconds for images
             });
             if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
           } catch (error) {

@@ -134,6 +134,52 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @GetMapping("/{userId}/followers")
+    public ResponseEntity<List<Map<String, Object>>> getUserFollowers(@PathVariable String userId) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            List<Map<String, Object>> followers = new ArrayList<>();
+            if (user.getFollowers() != null) {
+                for (String followerId : user.getFollowers()) {
+                    userRepository.findById(followerId).ifPresent(follower -> {
+                        Map<String, Object> followerInfo = new HashMap<>();
+                        followerInfo.put("id", follower.getId());
+                        followerInfo.put("name", follower.getFirstName() + " " + follower.getLastName());
+                        followerInfo.put("profilePicture", follower.getProfilePicture());
+                        followers.add(followerInfo);
+                    });
+                }
+            }
+            return ResponseEntity.ok(followers);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<?> getUserProfile(@PathVariable String userId) {
+        try {
+            User user = userService.getUserById(userId);
+            if (user == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", user.getId());
+            response.put("firstName", user.getFirstName());
+            response.put("lastName", user.getLastName());
+            response.put("email", user.getEmail());
+            response.put("profilePicture", user.getProfilePicture());
+            response.put("bio", user.getBio());
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }
 
 class ProfilePictureResponse {

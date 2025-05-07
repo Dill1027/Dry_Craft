@@ -19,6 +19,10 @@ function Profile() {
   const [editingBio, setEditingBio] = useState(false);
   const [bio, setBio] = useState(user?.bio || '');
   const [bioError, setBioError] = useState('');
+  const [friends, setFriends] = useState(user?.friends || []);
+  const [followers, setFollowers] = useState([]);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [followersLoading, setFollowersLoading] = useState(false);
 
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
@@ -35,11 +39,14 @@ function Profile() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file');
+    // Validate file type
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+    if (!validImageTypes.includes(file.type)) {
+      setError('Please upload a valid image file (JPEG, PNG, or GIF)');
       return;
     }
 
+    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image must be less than 5MB');
       return;
@@ -48,13 +55,14 @@ function Profile() {
     setImage(file);
     setPreviewUrl(URL.createObjectURL(file));
     setError('');
+    
+    // Automatically trigger upload when file is selected
+    handleSubmit(file);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!image) return;
+  const handleSubmit = async (file) => {
+    if (!file) return;
 
-    // Check if user exists and has ID
     if (!user || !user.id) {
       setError('User session expired. Please login again');
       localStorage.removeItem('user');
@@ -68,15 +76,21 @@ function Profile() {
       setLoading(true);
       setError('');
       const formData = new FormData();
-      formData.append('image', image);
+      formData.append('image', file);
 
-      const response = await axiosInstance.put(`/api/users/${user.id}/profile-picture`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      const response = await axiosInstance.put(
+        `/api/users/${user.id}/profile-picture`, 
+        formData, 
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 60000, // Increased to 60 seconds
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity
         }
-      });
+      );
 
-      // Only update if the request was successful
       if (response.data && response.data.profilePicture) {
         const updatedUser = { ...user, profilePicture: response.data.profilePicture };
         localStorage.setItem('user', JSON.stringify(updatedUser));
@@ -88,7 +102,15 @@ function Profile() {
       }
     } catch (err) {
       console.error('Error updating profile picture:', err);
-      setError(err.response?.data?.message || 'Failed to update profile picture');
+      let errorMessage = 'Failed to update profile picture. Please try again.';
+      
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Upload timed out. Please try with a smaller image or check your connection.';
+      } else if (err.response?.status === 413) {
+        errorMessage = 'Image is too large. Please choose a smaller image (max 5MB).';
+      }
+      
+      setError(errorMessage);
       if (err.response?.status === 401) {
         localStorage.removeItem('user');
         setTimeout(() => {
@@ -128,6 +150,19 @@ function Profile() {
     }
   };
 
+  const fetchFollowers = async () => {
+    if (!user?.id) return;
+    try {
+      setFollowersLoading(true);
+      const response = await axiosInstance.get(`/api/users/${user.id}/followers`);
+      setFollowers(response.data || []);
+    } catch (err) {
+      console.error('Error fetching followers:', err);
+    } finally {
+      setFollowersLoading(false);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -147,6 +182,35 @@ function Profile() {
       const interval = setInterval(fetchNotifications, 60000);
       return () => clearInterval(interval);
     }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchFollowers();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const response = await axiosInstance.get(`/api/users/${user.id}`);
+        const userData = response.data;
+        
+        // Update the local user data with the latest from server
+        const updatedUser = { ...user, ...userData };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setBio(userData.bio || '');
+        
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+        setError('Failed to load user data');
+      }
+    };
+
+    fetchUserData();
   }, [user?.id]);
 
   const fetchUserPosts = async () => {
@@ -368,7 +432,18 @@ function Profile() {
             <div className="w-full max-w-2xl mx-auto mt-8">
               <div className="bg-white rounded-xl shadow-md p-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-semibold text-gray-800">Bio</h3>
+                  <div className="flex space-x-4 items-center">
+                    <h3 className="text-lg font-semibold text-gray-800">Bio</h3>
+                    <button
+                      onClick={() => {
+                        fetchFollowers();
+                        setShowFollowers(true);
+                      }}
+                      className="text-sm text-blue-500 hover:text-blue-600"
+                    >
+                      {followers.length} Followers
+                    </button>
+                  </div>
                   {!editingBio && (
                     <button
                       onClick={() => setEditingBio(true)}
@@ -418,6 +493,61 @@ function Profile() {
                 )}
               </div>
             </div>
+
+            {/* Followers Modal */}
+            {showFollowers && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-900">Followers</h3>
+                    <button
+                      onClick={() => setShowFollowers(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  {followersLoading ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  ) : followers.length === 0 ? (
+                    <p className="text-center text-gray-500 py-4">No followers yet</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {followers.map((follower) => (
+                        <div
+                          key={follower.id}
+                          className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                        >
+                          <img
+                            src={follower.profilePicture ? 
+                              (follower.profilePicture.startsWith('/api/') ? 
+                                follower.profilePicture : 
+                                `/api/media/${follower.profilePicture}`
+                              ) : 
+                              defaultAvatarUrl
+                            }
+                            alt={follower.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = defaultAvatarUrl;
+                            }}
+                          />
+                          <div>
+                            <h4 className="font-medium text-gray-900">{follower.name}</h4>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Posts Section */}
             <div className="mt-12">
