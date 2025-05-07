@@ -15,22 +15,26 @@ public class Comment {
     private String id;
     private String userId;
     private String content;
-    
-    @JsonSerialize(using = LocalDateTimeSerializer.class)
-    private LocalDateTime createdAt;
-    
-    private String authorId;
     private String authorName;
     private String parentId;
     private List<Comment> replies;
     private boolean isReply;
+    
+    @JsonSerialize(using = LocalDateTimeSerializer.class)
+    private LocalDateTime createdAt;
 
     public Comment() {
         this.createdAt = LocalDateTime.now();
         this.replies = new ArrayList<>();
     }
 
-    // Helper methods for managing replies
+    public Comment(String userId, String content, String authorName) {
+        this();
+        this.userId = userId;
+        this.content = content; 
+        this.authorName = authorName;
+    }
+
     public void addReply(Comment reply) {
         if (replies == null) {
             replies = new ArrayList<>();
@@ -40,23 +44,6 @@ public class Comment {
         replies.add(reply);
     }
 
-    public boolean hasParent() {
-        return parentId != null;
-    }
-
-    public boolean isParentOf(Comment otherComment) {
-        return this.id != null && this.id.equals(otherComment.getParentId());
-    }
-
-    // Standard constructors
-    public Comment(String userId, String content, String authorName) {
-        this();
-        this.userId = userId;
-        this.content = content;
-        this.authorName = authorName;
-    }
-
-    // Getters and Setters
     public String getId() {
         return id;
     }
@@ -87,14 +74,6 @@ public class Comment {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
-    }
-
-    public String getAuthorId() {
-        return authorId;
-    }
-
-    public void setAuthorId(String authorId) {
-        this.authorId = authorId;
     }
 
     public String getAuthorName() {

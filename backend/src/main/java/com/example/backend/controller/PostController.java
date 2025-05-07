@@ -136,27 +136,29 @@ public class PostController {
     public ResponseEntity<PostResponse> addComment(
             @PathVariable String postId,
             @RequestParam String userId,
-            @RequestParam String content) {
+            @RequestParam String content,
+            @RequestParam(required = false) String parentCommentId) {
         try {
-            PostResponse response = postService.addComment(postId, userId, content);
+            PostResponse response;
+            if (parentCommentId != null) {
+                // Handle reply
+                response = postService.addReply(postId, userId, content, parentCommentId);
+            } else {
+                // Handle regular comment
+                response = postService.addComment(postId, userId, content);
+            }
             
             // Create notification for post owner if commenter is not the owner
             if (!response.getUserId().equals(userId)) {
                 try {
-                    String commenterName;
-                    try {
-                        commenterName = postService.getUserName(userId);
-                    } catch (Exception e) {
-                        commenterName = "Someone"; // Fallback name if user lookup fails
-                    }
-                    
+                    String commenterName = postService.getUserName(userId);
                     notificationService.createNotification(
-                        response.getUserId(),    // recipient (post owner)
-                        userId,                  // sender (commenter)
+                        response.getUserId(),
+                        userId,
                         commenterName,
                         postId,
-                        String.format("commented: %s", content),
-                        "COMMENT"
+                        String.format(parentCommentId != null ? "replied: %s" : "commented: %s", content),
+                        parentCommentId != null ? "REPLY" : "COMMENT"
                     );
                     logger.log(Level.INFO, "Notification created for user: " + response.getUserId());
                 } catch (Exception e) {
@@ -165,9 +167,12 @@ public class PostController {
             }
             
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            logger.log(Level.WARNING, "Error adding comment: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            logger.log(Level.WARNING, "Invalid input: " + e.getMessage());
             return ResponseEntity.badRequest().build();
+        } catch (Exception e) {
+            logger.log(Level.WARNING, "Error adding comment/reply: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
