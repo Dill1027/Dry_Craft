@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -143,7 +144,7 @@ public class UserController {
             
             List<Map<String, Object>> followers = new ArrayList<>();
             if (user.getFollowers() != null) {
-                for (String followerId : user.getFollowers()) {
+                user.getFollowers().forEach(followerId -> {
                     userRepository.findById(followerId).ifPresent(follower -> {
                         Map<String, Object> followerInfo = new HashMap<>();
                         followerInfo.put("id", follower.getId());
@@ -151,33 +152,42 @@ public class UserController {
                         followerInfo.put("profilePicture", follower.getProfilePicture());
                         followers.add(followerInfo);
                     });
-                }
+                });
             }
             return ResponseEntity.ok(followers);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Collections.emptyList());
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(null);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Collections.emptyList());
         }
     }
 
     @GetMapping("/{userId}")
     public ResponseEntity<?> getUserProfile(@PathVariable String userId) {
         try {
-            User user = userService.getUserById(userId);
-            if (user == null) {
-                return ResponseEntity.notFound().build();
-            }
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
             
             Map<String, Object> response = new HashMap<>();
             response.put("id", user.getId());
             response.put("firstName", user.getFirstName());
             response.put("lastName", user.getLastName());
             response.put("email", user.getEmail());
-            response.put("profilePicture", user.getProfilePicture());
             response.put("bio", user.getBio());
+            response.put("profilePicture", user.getProfilePicture());
+            response.put("followers", user.getFollowers() != null ? user.getFollowers().size() : 0);
             
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            Map<String, String> error = new HashMap<>();
+            error.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            Map<String, String> error = new HashMap<>();
+            error.put("message", "An error occurred while fetching user data");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
         }
     }
 }
