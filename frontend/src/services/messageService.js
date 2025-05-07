@@ -21,10 +21,14 @@ export const markMessageAsRead = (messageId) => {
   return axiosInstance.put(`/api/messages/${messageId}/read`);
 };
 
-export const replyToMessage = (messageId, replyContent) => {
-  return axiosInstance.post(`/api/messages/${messageId}/reply`, { replyContent });
+export const replyToMessage = (messageId, content) => {
+  return axiosInstance.post(`/api/messages/reply/${messageId}`, { content });
 };
 
-export const getBuyerMessages = (buyerId) => {
-  return axiosInstance.get(`/api/messages/buyer/${buyerId}`);
+export const getConversation = (userId1, userId2) => {
+  return axiosInstance.get(`/api/messages/conversation/${userId1}/${userId2}`);
+};
+
+export const getUserMessages = (userId) => {
+  return axiosInstance.get(`/api/messages/user/${userId}`);
 };

@@ -12,7 +12,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/messages")
-@CrossOrigin(origins = "http://localhost:3000")
+@CrossOrigin(origins = {"http://localhost:3000", "http://localhost:3001"})
 public class MessageController {
     @Autowired
     private MessageService messageService;
@@ -43,17 +43,27 @@ public class MessageController {
         return ResponseEntity.ok(messageService.markAsRead(id));
     }
     
-    @PostMapping("/{id}/reply")
+    @PostMapping("/reply/{messageId}")
     public ResponseEntity<Message> replyToMessage(
-            @PathVariable String id,
+            @PathVariable String messageId,
             @RequestBody Map<String, String> request) {
-        String replyContent = request.get("replyContent");
-        Message message = messageService.replyToMessage(id, replyContent);
-        return ResponseEntity.ok(message);
+        try {
+            Message reply = messageService.replyToMessage(messageId, request.get("content"));
+            return ResponseEntity.ok(reply);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
     }
 
-    @GetMapping("/buyer/{buyerId}")
-    public ResponseEntity<List<Message>> getBuyerMessages(@PathVariable String buyerId) {
-        return ResponseEntity.ok(messageService.getBuyerMessages(buyerId));
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<List<Message>> getUserMessages(@PathVariable String userId) {
+        return ResponseEntity.ok(messageService.getUserMessages(userId));
+    }
+
+    @GetMapping("/conversation/{userId1}/{userId2}")
+    public ResponseEntity<List<Message>> getConversation(
+            @PathVariable String userId1,
+            @PathVariable String userId2) {
+        return ResponseEntity.ok(messageService.getConversation(userId1, userId2));
     }
 }
