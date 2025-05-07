@@ -18,6 +18,8 @@ function TutorialForm() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
   const [progress, setProgress] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const [uploadData, setUploadData] = useState(null);
 
   // Add craft types constant
   const craftTypes = [
@@ -125,6 +127,10 @@ function TutorialForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    await submitTutorial();
+  };
+
+  const submitTutorial = async (isRetry = false) => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) {
       setError('Please login to create a tutorial');
@@ -132,7 +138,11 @@ function TutorialForm() {
     }
 
     try {
-      setLoading(true);
+      if (!isRetry) {
+        setLoading(true);
+      } else {
+        setRetrying(true); 
+      }
       setError('');
       setProgress(0);
 
@@ -141,6 +151,15 @@ function TutorialForm() {
       formDataToSend.append('title', formData.title.trim());
       formDataToSend.append('description', formData.description.trim());
       formDataToSend.append('craftType', formData.craftType);
+
+      // Store form data for retry
+      if (!isRetry) {
+        setUploadData({
+          formData: formData,
+          images: images,
+          video: video
+        });
+      }
 
       // Handle media files first
       const processedImages = [];
@@ -190,9 +209,9 @@ function TutorialForm() {
       let errorMsg;
       
       if (err.code === 'ECONNRESET' || err.code === 'ERR_NETWORK') {
-        errorMsg = 'Connection lost. Please check your internet connection and try again.';
+        errorMsg = 'Connection lost. Click retry to attempt upload again.';
       } else if (err.code === 'ECONNABORTED') {
-        errorMsg = 'Upload timed out. Please try again with a smaller file or check your connection';
+        errorMsg = 'Upload timed out. Please try again with a smaller file or check your connection.';
       } else {
         errorMsg = err.response?.data?.message || 'Failed to create tutorial';
       }
@@ -200,6 +219,7 @@ function TutorialForm() {
       setError(errorMsg);
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
   };
 
@@ -254,6 +274,45 @@ function TutorialForm() {
     });
   };
 
+  const renderError = () => (
+    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg animate-shake">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center text-red-700">
+          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+          </svg>
+          {error}
+        </div>
+        {(error.includes('Connection lost') || error.includes('timed out')) && (
+          <button
+            type="button"
+            onClick={() => submitTutorial(true)}
+            disabled={retrying}
+            className="ml-4 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 
+                     rounded-lg transition-colors duration-200 disabled:opacity-50 flex items-center"
+          >
+            {retrying ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Retrying...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Retry
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       <div className="max-w-4xl mx-auto animate-fadeIn">
@@ -275,16 +334,7 @@ function TutorialForm() {
             Create Tutorial
           </h2>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg animate-shake">
-              <div className="flex items-center text-red-700">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
-                </svg>
-                {error}
-              </div>
-            </div>
-          )}
+          {error && renderError()}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
