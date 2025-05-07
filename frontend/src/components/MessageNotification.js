@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { getUnreadMessages, markMessageAsRead, replyToMessage } from '../services/messageService';
+import axiosInstance from '../utils/axios';  // Fix import path
 
 const MessageNotification = ({ sellerId }) => {
   const [unreadMessages, setUnreadMessages] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [replyContents, setReplyContents] = useState({}); // Track reply content per message
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const fetchUnreadMessages = async () => {
@@ -33,26 +36,18 @@ const MessageNotification = ({ sellerId }) => {
 
   const handleReply = async (messageId) => {
     try {
-      const replyContent = replyContents[messageId];
-      if (!replyContent?.trim()) {
-        return;
-      }
-
-      await replyToMessage(messageId, replyContent);
+      setSending(true);
+      await replyToMessage(messageId, replyMessage);
       
-      setUnreadMessages(prev => prev.map(msg => 
-        msg.id === messageId 
-          ? { ...msg, replyContent, replyAt: new Date() }
-          : msg
-      ));
-      
-      // Clear the reply content for this message
-      setReplyContents(prev => ({
-        ...prev,
-        [messageId]: ''
-      }));
+      // Clear the reply form and refresh messages
+      setReplyMessage('');
+      setReplyingTo(null);
+      const response = await getUnreadMessages(sellerId);
+      setUnreadMessages(response.data);
     } catch (error) {
-      console.error('Error replying to message:', error);
+      console.error('Error sending reply:', error);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -80,37 +75,52 @@ const MessageNotification = ({ sellerId }) => {
         {unreadMessages.map(message => (
           <div key={message.id} className="p-4 bg-white rounded-lg shadow border border-gray-100">
             <p className="text-gray-800 mb-2">{message.content}</p>
-            <div className="flex flex-col gap-2">
-              <textarea
-                className="w-full p-2 border rounded-lg"
-                placeholder="Write a reply..."
-                rows="2"
-                value={replyContents[message.id] || ''}
-                onChange={(e) => setReplyContents(prev => ({
-                  ...prev,
-                  [message.id]: e.target.value
-                }))}
-              />
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => handleReply(message.id)}
-                  disabled={!replyContents[message.id]?.trim()}
-                  className={`px-4 py-2 rounded-lg ${
-                    !replyContents[message.id]?.trim() 
-                      ? 'bg-gray-300 cursor-not-allowed' 
-                      : 'bg-blue-500 hover:bg-blue-600 text-white'
-                  }`}
-                >
-                  Reply
-                </button>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-500">
+                {new Date(message.createdAt).toLocaleString()}
+              </span>
+              <div className="flex gap-2">
                 <button
                   onClick={() => handleMarkAsRead(message.id)}
-                  className="text-sm text-blue-500 hover:text-blue-600"
+                  className="text-sm text-blue-500 hover:text-blue-600 font-medium"
                 >
                   Mark as read
                 </button>
+                <button
+                  onClick={() => setReplyingTo(message.id)}
+                  className="text-sm text-green-500 hover:text-green-600 font-medium"
+                >
+                  Reply
+                </button>
               </div>
             </div>
+            
+            {replyingTo === message.id && (
+              <div className="mt-3">
+                <textarea
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  placeholder="Type your reply..."
+                  rows="3"
+                  className="w-full p-2 border rounded-lg mb-2 focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleReply(message.id)}
+                    disabled={sending || !replyMessage.trim()}
+                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300"
+                  >
+                    {sending ? 'Sending...' : 'Send Reply'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         
