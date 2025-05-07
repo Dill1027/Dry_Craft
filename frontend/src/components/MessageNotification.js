@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { getUnreadMessages, markMessageAsRead } from '../services/messageService';
+import { getUnreadMessages, markMessageAsRead, replyToMessage } from '../services/messageService';
+import axiosInstance from '../utils/axios';  // Fix import path
 
 const MessageNotification = ({ sellerId }) => {
   const [unreadMessages, setUnreadMessages] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     const fetchUnreadMessages = async () => {
@@ -27,6 +31,23 @@ const MessageNotification = ({ sellerId }) => {
       setUnreadMessages(prev => prev.filter(msg => msg.id !== messageId));
     } catch (error) {
       console.error('Error marking message as read:', error);
+    }
+  };
+
+  const handleReply = async (messageId) => {
+    try {
+      setSending(true);
+      await replyToMessage(messageId, replyMessage);
+      
+      // Clear the reply form and refresh messages
+      setReplyMessage('');
+      setReplyingTo(null);
+      const response = await getUnreadMessages(sellerId);
+      setUnreadMessages(response.data);
+    } catch (error) {
+      console.error('Error sending reply:', error);
+    } finally {
+      setSending(false);
     }
   };
 
@@ -54,17 +75,52 @@ const MessageNotification = ({ sellerId }) => {
         {unreadMessages.map(message => (
           <div key={message.id} className="p-4 bg-white rounded-lg shadow border border-gray-100">
             <p className="text-gray-800 mb-2">{message.content}</p>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-gray-500">
                 {new Date(message.createdAt).toLocaleString()}
               </span>
-              <button
-                onClick={() => handleMarkAsRead(message.id)}
-                className="text-sm text-blue-500 hover:text-blue-600 font-medium"
-              >
-                Mark as read
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleMarkAsRead(message.id)}
+                  className="text-sm text-blue-500 hover:text-blue-600 font-medium"
+                >
+                  Mark as read
+                </button>
+                <button
+                  onClick={() => setReplyingTo(message.id)}
+                  className="text-sm text-green-500 hover:text-green-600 font-medium"
+                >
+                  Reply
+                </button>
+              </div>
             </div>
+            
+            {replyingTo === message.id && (
+              <div className="mt-3">
+                <textarea
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  placeholder="Type your reply..."
+                  rows="3"
+                  className="w-full p-2 border rounded-lg mb-2 focus:ring-2 focus:ring-blue-500"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setReplyingTo(null)}
+                    className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => handleReply(message.id)}
+                    disabled={sending || !replyMessage.trim()}
+                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300"
+                  >
+                    {sending ? 'Sending...' : 'Send Reply'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
         

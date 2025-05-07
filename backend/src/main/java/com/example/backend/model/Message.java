@@ -2,18 +2,26 @@ package com.example.backend.model;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import org.springframework.data.annotation.Transient;
 import java.time.LocalDateTime;
 
 @Document(collection = "messages")
 public class Message {
     @Id
     private String id;
+    private String senderId;
+    private String receiverId;
     private String sellerId;
     private String buyerId;
     private String productId;
     private String content;
     private LocalDateTime createdAt;
     private boolean isRead;
+
+    @Transient
+    private String senderName;
+    @Transient
+    private String receiverName;
 
     // Getters and setters
     public String getId() {
@@ -22,6 +30,22 @@ public class Message {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getSenderId() {
+        return senderId;
+    }
+
+    public void setSenderId(String senderId) {
+        this.senderId = senderId;
+    }
+
+    public String getReceiverId() {
+        return receiverId;
+    }
+
+    public void setReceiverId(String receiverId) {
+        this.receiverId = receiverId;
     }
 
     public String getSellerId() {
@@ -70,5 +94,21 @@ public class Message {
 
     public void setRead(boolean read) {
         isRead = read;
+    }
+
+    public String getSenderName() {
+        return senderName;
+    }
+
+    public void setSenderName(String senderName) {
+        this.senderName = senderName;
+    }
+
+    public String getReceiverName() {
+        return receiverName;
+    }
+
+    public void setReceiverName(String receiverName) {
+        this.receiverName = receiverName;
     }
 }
