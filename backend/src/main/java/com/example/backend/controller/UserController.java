@@ -19,12 +19,17 @@ import com.example.backend.repository.UserRepository;
 import com.example.backend.service.UserService;
 import com.mongodb.client.gridfs.GridFSBucket;
 
+<<<<<<< HEAD
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
+=======
+import java.util.Collections;
+import java.util.Map;
+>>>>>>> 73105fdb7998db31e45eb70a7fd497fd334c7dbb
 
 @RestController
 @RequestMapping("/api/users")
@@ -75,6 +80,7 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+<<<<<<< HEAD
     @GetMapping("/suggestions") 
     public ResponseEntity<List<Map<String, Object>>> getSuggestedUsers() {
         try {
@@ -120,10 +126,34 @@ public class UserController {
             userRepository.save(userToFollow);
             
             return ResponseEntity.ok().build();
+=======
+    @PutMapping("/{userId}/bio")
+    public ResponseEntity<?> updateBio(@PathVariable String userId, @RequestBody UpdateBioRequest request) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            user.setBio(request.getBio());
+            userRepository.save(user);  // Fixed: removed incorrect '=' sign
+            return ResponseEntity.ok(Collections.singletonMap("bio", user.getBio()));
+>>>>>>> 73105fdb7998db31e45eb70a7fd497fd334c7dbb
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+<<<<<<< HEAD
+=======
+
+    @GetMapping("/{userId}/bio")
+    public ResponseEntity<?> getBio(@PathVariable String userId) {
+        try {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+            return ResponseEntity.ok().body(Collections.singletonMap("bio", user.getBio()));
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+>>>>>>> 73105fdb7998db31e45eb70a7fd497fd334c7dbb
 }
 
 class ProfilePictureResponse {
@@ -150,4 +180,11 @@ class UpdateNameRequest {
     public void setFirstName(String firstName) { this.firstName = firstName; }
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
+}
+
+class UpdateBioRequest {
+    private String bio;
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 }

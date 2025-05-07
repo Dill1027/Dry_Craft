@@ -90,9 +90,14 @@ function Home() {
   };
 
   const handlePostUpdated = (updatedPost) => {
-    setPosts(
-      posts.map((post) => (post.id === updatedPost.id ? updatedPost : post))
-    );
+    setPosts(posts.map((post) => 
+      post.id === updatedPost.id ? {
+        ...post,
+        ...updatedPost,
+        userReaction: updatedPost.userReaction,
+        reactionCounts: updatedPost.reactionCounts
+      } : post
+    ));
   };
 
   const handleLogout = () => {
@@ -232,7 +237,7 @@ function Home() {
               />
             </div>
             <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-              Welcome, {user?.firstName || 'User'}
+              {user?.firstName || 'User'}
             </h2>
           </div>
           <div className="flex gap-4 items-center">

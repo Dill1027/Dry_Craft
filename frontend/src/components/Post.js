@@ -26,9 +26,12 @@ function Post({
   const [newComment, setNewComment] = useState("");
   const [editingCommentIndex, setEditingCommentIndex] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState('');
-  const [currentReaction, setCurrentReaction] = useState(post?.userReaction || null);
+  const [currentReaction, setCurrentReaction] = useState(() => {
+    const savedReaction = localStorage.getItem(`post_${post.id}_reaction`);
+    return savedReaction || post?.userReaction || null;
+  });
   const [reactionCounts, setReactionCounts] = useState(() => {
-    return post?.reactionCounts || { LIKE: 0, HEART: 0 };
+    return post?.reactionCounts || {};
   });
   const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [isHoveringReaction, setIsHoveringReaction] = useState(false);
@@ -57,6 +60,8 @@ function Post({
   };
 
   const loadMedia = async () => {
+    const abortController = new AbortController();
+    
     try {
       setVideoError(false);
       const newMediaUrls = {};
@@ -65,6 +70,7 @@ function Post({
         const mediaId = post.videoUrl.split("/").pop();
         try {
           const videoUrl = await getMediaUrl(mediaId, post.videoUrl, {
+            signal: abortController.signal,
             retries: 2,
             retryDelay: 1000,
             timeout: 20000
@@ -73,36 +79,48 @@ function Post({
             newMediaUrls.video = videoUrl;
           }
         } catch (error) {
-          console.error('Error loading video:', error);
-          newMediaUrls.video = getFullUrl(post.videoUrl);
+          if (!abortController.signal.aborted) {
+            console.error('Error loading video:', error);
+            newMediaUrls.video = getFullUrl(post.videoUrl);
+          }
         }
       }
 
-      if (post.imageUrls?.length) {
-        for (const url of post.imageUrls) {
+      if (!abortController.signal.aborted && post.imageUrls?.length) {
+        await Promise.all(post.imageUrls.map(async (url) => {
           const mediaId = url.split("/").pop();
           try {
-            const mediaUrl = await getMediaUrl(mediaId, url);
+            const mediaUrl = await getMediaUrl(mediaId, url, {
+              signal: abortController.signal
+            });
             if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
           } catch (error) {
-            console.error(`Error loading image ${mediaId}:`, error);
-            newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
+            if (!abortController.signal.aborted) {
+              console.error(`Error loading image ${mediaId}:`, error);
+              newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
+            }
           }
-        }
+        }));
       }
 
-      setMediaUrls(prevUrls => {
-        Object.values(prevUrls).forEach(url => {
-          if (url?.startsWith('blob:')) {
-            URL.revokeObjectURL(url);
-          }
+      if (!abortController.signal.aborted) {
+        setMediaUrls(prevUrls => {
+          Object.values(prevUrls).forEach(url => {
+            if (url?.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
+          return {...prevUrls, ...newMediaUrls};
         });
-        return {...prevUrls, ...newMediaUrls};
-      });
+      }
     } catch (error) {
-      console.error('Error in loadMedia:', error);
-      setError("Failed to load media content");
+      if (!abortController.signal.aborted) {
+        console.error('Error in loadMedia:', error);
+        setError("Failed to load media content");
+      }
     }
+
+    return () => abortController.abort();
   };
 
   const handleVideoError = async (e) => {
@@ -164,7 +182,19 @@ function Post({
     if (post?.reactionCounts) {
       setReactionCounts(post.reactionCounts);
     }
-  }, [post?.reactionCounts]);
+    if (post?.userReaction) {
+      setCurrentReaction(post.userReaction);
+      localStorage.setItem(`post_${post.id}_reaction`, post.userReaction);
+    }
+  }, [post]);
+
+  useEffect(() => {
+    if (currentReaction) {
+      localStorage.setItem(`post_${post.id}_reaction`, currentReaction);
+    } else {
+      localStorage.removeItem(`post_${post.id}_reaction`);
+    }
+  }, [currentReaction, post.id]);
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
@@ -301,9 +331,32 @@ function Post({
     }
   };
 
+  const handleDeleteAllComments = async () => {
+    if (!window.confirm('Are you sure you want to delete all comments on this post?')) return;
+
+    try {
+      const response = await axiosInstance.delete(
+        `/api/posts/${post.id}/comments/all`,
+        {
+          params: { userId: user.id }
+        }
+      );
+      setComments(response.data.comments);
+    } catch (error) {
+      console.error('Error deleting all comments:', error);
+      setError("Failed to delete all comments");
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
   const isCommentAuthor = (comment) => {
     const authorId = comment.split('|')[0];
     return user && user.id === authorId;
+  };
+
+  const canDeleteComment = (comment) => {
+    const authorId = comment.split('|')[0];
+    return user && (user.id === authorId || user.id === post.userId);
   };
 
   const getCommentContent = (comment) => {
@@ -322,48 +375,55 @@ function Post({
     const oldCounts = { ...reactionCounts };
 
     try {
-      // Toggle reaction if clicking the same type
       const newReactionType = currentReaction === reactionType ? null : reactionType;
       
       // Optimistic update
       setCurrentReaction(newReactionType);
       const updatedCounts = { ...reactionCounts };
       
-      // Remove old reaction count
       if (oldReaction) {
         updatedCounts[oldReaction] = Math.max(0, (updatedCounts[oldReaction] || 0) - 1);
       }
       
-      // Add new reaction count
       if (newReactionType) {
         updatedCounts[newReactionType] = (updatedCounts[newReactionType] || 0) + 1;
         setIsHoveringReaction(true);
       }
       setReactionCounts(updatedCounts);
 
-      // Make API call
       const response = await axiosInstance.post(`/api/posts/${post.id}/reactions`, {
         userId: user.id,
         reactionType: newReactionType
       });
 
-      // Update with server response
       if (response.data) {
         setCurrentReaction(response.data.userReaction);
-        setReactionCounts(response.data.reactionCounts);
+        setReactionCounts(response.data.reactionCounts || {});
+        
+        if (response.data.userReaction) {
+          localStorage.setItem(`post_${post.id}_reaction`, response.data.userReaction);
+        } else {
+          localStorage.removeItem(`post_${post.id}_reaction`);
+        }
+
+        // Update the post in parent component
+        onPostUpdated({
+          ...post,
+          userReaction: response.data.userReaction,
+          reactionCounts: response.data.reactionCounts
+        });
       }
     } catch (error) {
       // Revert changes on error
       setCurrentReaction(oldReaction);
       setReactionCounts(oldCounts);
       setError("Failed to update reaction");
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      // Cleanup
-      if (isHoveringReaction) {
-        setTimeout(() => setIsHoveringReaction(false), 1000);
+      
+      if (oldReaction) {
+        localStorage.setItem(`post_${post.id}_reaction`, oldReaction);
+      } else {
+        localStorage.removeItem(`post_${post.id}_reaction`);
       }
-      setShowReactionMenu(false);
     }
   };
 
@@ -663,54 +723,44 @@ function Post({
 
           <div className="flex flex-col border-t mt-4 pt-4">
             <div className="flex items-center space-x-6 mb-4">
-              <div className="relative">
+              <div className="flex space-x-4">
                 <button
-                  className={`reaction-button flex items-center space-x-2 ${
-                    currentReaction ? 'text-blue-500' : 'text-gray-500 hover:text-blue-500'
-                  } transition-colors duration-200`}
+                  className={`reaction-button flex items-center space-x-2 px-3 py-2 rounded-full 
+                    ${currentReaction === 'LIKE' 
+                      ? 'bg-blue-50 text-blue-500 scale-110' 
+                      : 'text-gray-500 hover:text-blue-500 hover:bg-blue-50'} 
+                    transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95`}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleReaction(currentReaction ? null : 'LIKE');
+                    handleReaction(currentReaction === 'LIKE' ? null : 'LIKE');
                   }}
-                  onMouseEnter={() => setShowReactionMenu(true)}
                 >
-                  <span className="text-xl relative">
-                    {currentReaction ? getReactionEmoji(currentReaction) : '👍'}
-                    {isHoveringReaction && currentReaction && (
-                      <span className="absolute -top-2 -right-2 animate-ping">
-                        {getReactionEmoji(currentReaction)}
-                      </span>
-                    )}
+                  <span className={`text-xl transform transition-transform duration-300 
+                    ${currentReaction === 'LIKE' ? 'animate-bounce' : 'hover:scale-110'}`}>
+                    👍
                   </span>
-                  <span className="text-sm font-medium">
-                    {getTotalReactions()}
-                  </span>
+                  <span className="text-sm font-medium">{reactionCounts['LIKE'] || 0}</span>
                 </button>
 
-                {showReactionMenu && (
-                  <div 
-                    className="reaction-menu absolute bottom-full left-0 mb-2 bg-white rounded-full shadow-lg px-2 py-1 flex space-x-2 z-10"
-                    onMouseEnter={() => setShowReactionMenu(true)}
-                    onMouseLeave={() => setShowReactionMenu(false)}
-                  >
-                    {['LIKE', 'HEART'].map(type => (
-                      <button
-                        key={type}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleReaction(type);
-                        }}
-                        className={`p-2 hover:bg-gray-100 rounded-full transition-all duration-200 transform hover:scale-110 ${
-                          currentReaction === type ? 'text-blue-500 scale-110' : ''
-                        }`}
-                      >
-                        {getReactionEmoji(type)}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                <button
+                  className={`reaction-button flex items-center space-x-2 px-3 py-2 rounded-full 
+                    ${currentReaction === 'HEART' 
+                      ? 'bg-red-50 text-red-500 scale-110' 
+                      : 'text-gray-500 hover:text-red-500 hover:bg-red-50'} 
+                    transition-all duration-300 ease-in-out transform hover:scale-105 active:scale-95`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleReaction(currentReaction === 'HEART' ? null : 'HEART');
+                  }}
+                >
+                  <span className={`text-xl filter ${currentReaction === 'HEART' ? 'animate-heartbeat' : 'hover:scale-110'}
+                    transform transition-transform duration-300`}>
+                    ❤️
+                  </span>
+                  <span className="text-sm font-medium">{reactionCounts['HEART'] || 0}</span>
+                </button>
               </div>
 
               <button 
@@ -794,10 +844,23 @@ function Post({
 
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${showComments ? 'max-h-screen' : 'max-h-0'}`}>
               <div className="space-y-3 pt-2">
+                {window.location.pathname.includes('/profile') && user?.id === post.userId && comments.length > 0 && (
+                  <button
+                    onClick={handleDeleteAllComments}
+                    className="w-full px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                      />
+                    </svg>
+                    Delete All Comments
+                  </button>
+                )}
                 {visibleComments.map((comment, index) => (
                   <div 
                     key={index} 
-                    className="p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100"
+                    className="p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100 relative group"
                   >
                     <div className="flex justify-between items-start">
                       {editingCommentIndex === index ? (
@@ -825,52 +888,38 @@ function Post({
                       ) : (
                         <>
                           <div className="flex-1">
-                            <p className="text-sm text-gray-600">{getCommentContent(comment)}</p>
+                            <p className="text-sm text-gray-600 pr-8">{getCommentContent(comment)}</p>
                           </div>
-                          {isCommentAuthor(comment) && (
-                            <div className="flex gap-2 ml-2">
-                              <button
-                                onClick={() => handleEditComment(index, comment)}
-                                className="text-gray-500 hover:text-blue-500 text-sm transition-colors duration-200"
-                                aria-label="Edit comment"
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
+                          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex gap-2">
+                            {isCommentAuthor(comment) && (
+                              <>
+                                <button
+                                  onClick={() => handleEditComment(index, comment)}
+                                  className="text-gray-500 hover:text-blue-500 text-sm transition-colors duration-200"
+                                  aria-label="Edit comment"
                                 >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth="2"
-                                    d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                  />
-                                </svg>
-                              </button>
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                    />
+                                  </svg>
+                                </button>
+                              </>
+                            )}
+                            {canDeleteComment(comment) && (
                               <button
                                 onClick={() => handleDeleteComment(index)}
                                 className="text-gray-500 hover:text-red-500 text-sm transition-colors duration-200"
                                 aria-label="Delete comment"
                               >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  className="w-4 h-4"
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round" 
-                                    strokeWidth="2"
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
                                     d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                   />
                                 </svg>
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </>
                       )}
                     </div>

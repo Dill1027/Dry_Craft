@@ -20,16 +20,53 @@ function Login() {
     if (error) setError("");
   };
 
+  const validateForm = () => {
+    if (!formData.email || !formData.password) {
+      setError("Please fill in all fields");
+      return false;
+    }
+    if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      setError("Please enter a valid email address");
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
+    
     setIsSubmitting(true);
+    setError("");
+
     try {
-      const response = await axiosInstance.post("/api/auth/login", formData);
-      localStorage.setItem("user", JSON.stringify(response.data));
-      navigate("/");
+      const response = await axiosInstance.post("/api/auth/login", 
+        {
+          email: formData.email.trim(),
+          password: formData.password
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data) {
+        localStorage.setItem("user", JSON.stringify(response.data));
+        navigate("/");
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.response?.data || "An error occurred";
-      setError(typeof errorMessage === 'object' ? JSON.stringify(errorMessage) : errorMessage);
+      console.error('Login failed:', err);
+      if (err.response?.status === 400) {
+        setError("Invalid email or password");
+      } else if (err.code === 'ERR_NETWORK') {
+        setError("Cannot connect to server. Please try again later.");
+      } else {
+        setError(err.response?.data || "Failed to login. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
 import Post from './Post';
@@ -14,10 +14,22 @@ function Profile() {
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [postsError, setPostsError] = useState('');
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bio, setBio] = useState(user?.bio || '');
+  const [bioError, setBioError] = useState('');
 
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -42,8 +54,19 @@ function Profile() {
     e.preventDefault();
     if (!image) return;
 
+    // Check if user exists and has ID
+    if (!user || !user.id) {
+      setError('User session expired. Please login again');
+      localStorage.removeItem('user');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError('');
       const formData = new FormData();
       formData.append('image', image);
 
@@ -53,17 +76,55 @@ function Profile() {
         }
       });
 
-      // Update local storage with new user data
-      const updatedUser = { ...user, profilePicture: response.data.profilePicture };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-
-      setSuccess('Profile picture updated successfully');
-      setTimeout(() => setSuccess(''), 3000);
+      // Only update if the request was successful
+      if (response.data && response.data.profilePicture) {
+        const updatedUser = { ...user, profilePicture: response.data.profilePicture };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setSuccess('Profile picture updated successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        throw new Error('Invalid server response');
+      }
     } catch (err) {
+      console.error('Error updating profile picture:', err);
       setError(err.response?.data?.message || 'Failed to update profile picture');
+      if (err.response?.status === 401) {
+        localStorage.removeItem('user');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBioUpdate = async () => {
+    try {
+      const response = await axiosInstance.put(`/api/users/${user.id}/bio`, {
+        bio: bio.trim()
+      });
+
+      if (response.data && response.data.bio !== undefined) {
+        const updatedUser = { ...user, bio: response.data.bio };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setEditingBio(false);
+        setSuccess('Bio updated successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    } catch (err) {
+      setBioError(err.response?.data?.message || 'Failed to update bio');
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const response = await axiosInstance.get(`/api/notifications/unread?userId=${user?.id}`);
+      setNotifications(response.data || []);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
     }
   };
 
@@ -79,9 +140,18 @@ function Profile() {
     fetchUserPosts();
   }, [user?.id]);
 
+  useEffect(() => {
+    if (user?.id) {
+      fetchNotifications();
+      // Poll for new notifications every minute
+      const interval = setInterval(fetchNotifications, 60000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.id]);
+
   const fetchUserPosts = async () => {
     if (!user?.id) return;
-    
+
     try {
       setPostsLoading(true);
       const response = await axiosInstance.get(`/api/posts/user/${user.id}`);
@@ -98,9 +168,18 @@ function Profile() {
   };
 
   const handlePostUpdated = (updatedPost) => {
-    setPosts(posts.map(post => 
+    setPosts(posts.map(post =>
       post.id === updatedPost.id ? updatedPost : post
     ));
+  };
+
+  const handleMarkAsRead = async (notificationId) => {
+    try {
+      await axiosInstance.put(`/api/notifications/${notificationId}/read`);
+      setNotifications(notifications.filter(n => n.id !== notificationId));
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
   };
 
   return (
@@ -111,15 +190,70 @@ function Profile() {
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 text-white">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-3xl font-bold">Profile Settings</h2>
-              <button
-                onClick={() => navigate('/')}
-                className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg flex items-center space-x-2 transition-all duration-300 hover:transform hover:-translate-x-1"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                <span>Back to Feed</span>
-              </button>
+              <div className="flex items-center space-x-4">
+                {/* Add notification button */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowNotifications(!showNotifications)}
+                    className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors relative"
+                  >
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                        d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    {notifications?.length > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                        {notifications.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notification dropdown */}
+                  {showNotifications && notifications && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg z-50 max-h-[80vh] overflow-y-auto">
+                      <div className="p-4">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4">Notifications</h3>
+                        {notifications.length === 0 ? (
+                          <p className="text-gray-500 text-center py-4">No new notifications</p>
+                        ) : (
+                          <div className="space-y-4">
+                            {notifications.map(notification => (
+                              <div key={notification.id} className="flex items-start p-3 bg-blue-50 rounded-lg">
+                                <div className="flex-1">
+                                  <p className="text-sm text-gray-800">
+                                    <span className="font-semibold">{notification.senderName}</span>
+                                    {' commented on your post: '}
+                                    <span className="text-gray-600">"{notification.content}"</span>
+                                  </p>
+                                  <div className="mt-2 flex gap-2">
+                                    <button
+                                      onClick={() => handleMarkAsRead(notification.id)}
+                                      className="text-sm text-blue-500 hover:text-blue-600"
+                                    >
+                                      Mark as read
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Existing back button */}
+                <button
+                  onClick={() => navigate('/')}
+                  className="px-4 py-2 bg-white bg-opacity-20 hover:bg-opacity-30 rounded-lg flex items-center space-x-2 transition-all duration-300 hover:transform hover:-translate-x-1"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  <span>Back to Feed</span>
+                </button>
+              </div>
             </div>
             <p className="text-blue-100">Manage your account information</p>
           </div>
@@ -148,7 +282,8 @@ function Profile() {
             <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8 mb-8">
               {/* Avatar with hover effect */}
               <div 
-                className="relative group"
+                className="relative group cursor-pointer"
+                onClick={triggerFileInput}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
               >
@@ -163,22 +298,27 @@ function Profile() {
                     }}
                   />
                   {isHovered && (
-                    <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center transition-opacity duration-300">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      </svg>
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-all duration-300">
+                      <div className="text-white text-center">
+                        <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-xs">Change Photo</span>
+                      </div>
                     </div>
                   )}
                 </div>
-                <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-md">
-                  <div className="bg-blue-500 rounded-full p-2 text-white">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                    </svg>
-                  </div>
-                </div>
               </div>
+
+              {/* Hidden file input */}
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/*" 
+                onChange={handleImageChange} 
+                className="hidden" 
+              />
 
               {/* User info */}
               <div className="text-center md:text-left">
@@ -224,66 +364,60 @@ function Profile() {
               </div>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Update Profile Picture
-                </label>
-                <div className="flex items-center space-x-4">
-                  <label className="flex-1 cursor-pointer">
-                    <div className="relative">
-                      <div className="flex items-center justify-center px-6 py-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 transition-colors duration-300 group">
-                        <div className="text-center">
-                          <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 transition-colors duration-300" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          <p className="mt-1 text-sm text-gray-600 group-hover:text-blue-600 transition-colors duration-300">
-                            {image ? image.name : 'Click to upload an image'}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
-                        </div>
-                      </div>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleImageChange} 
-                        className="hidden" 
-                      />
-                    </div>
-                  </label>
+            {/* Bio Section */}
+            <div className="w-full max-w-2xl mx-auto mt-8">
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">Bio</h3>
+                  {!editingBio && (
+                    <button
+                      onClick={() => setEditingBio(true)}
+                      className="text-blue-500 hover:text-blue-600 text-sm"
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
-              </div>
-              
-              <button
-                type="submit"
-                disabled={!image || loading}
-                className={`w-full py-3 px-6 rounded-xl text-white font-medium transition-all duration-300 relative overflow-hidden
-                  ${!image || loading 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1'}`}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Updating...
-                  </span>
+                
+                {editingBio ? (
+                  <div className="space-y-4">
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Write something about yourself..."
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                      rows="4"
+                      maxLength="500"
+                    />
+                    {bioError && (
+                      <p className="text-red-500 text-sm">{bioError}</p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingBio(false);
+                          setBio(user?.bio || '');
+                          setBioError('');
+                        }}
+                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleBioUpdate}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <span>Update Profile Picture</span>
+                  <p className="text-gray-600 whitespace-pre-wrap">
+                    {user?.bio || 'No bio yet. Click edit to add one!'}
+                  </p>
                 )}
-                {!loading && (
-                  <span className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                    <span className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-500 opacity-70"></span>
-                    <svg className="relative w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                  </span>
-                )}
-              </button>
-            </form>
+              </div>
+            </div>
 
             {/* Posts Section */}
             <div className="mt-12">

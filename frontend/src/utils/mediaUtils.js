@@ -4,14 +4,23 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8081';
 const PLACEHOLDER_IMAGE = `${API_BASE_URL}/images/placeholder-image.png`;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000;
+const DEFAULT_TIMEOUT = 30000; // 30 seconds
 
-const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
+const getMediaUrl = async (mediaId, originalUrl, options = {}) => {
+  const retryCount = options.retryCount || 0;
+  const signal = options.signal || new AbortController().signal;
+  const timeout = options.timeout || DEFAULT_TIMEOUT;
+  
   try {
+    console.log(`Attempting to load media ${mediaId} (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+    
     const response = await axiosInstance.loadMedia(mediaId, {
-      timeout: 10000, // 10 second timeout
-      retries: retryCount,
+      signal,
+      timeout: timeout * (retryCount + 1), // Progressive timeout increase
       onDownloadProgress: (progressEvent) => {
-        console.log(`Loading ${mediaId}: ${Math.round((progressEvent.loaded * 100) / progressEvent.total)}%`);
+        if (options.onProgress) {
+          options.onProgress(progressEvent);
+        }
       }
     });
 
@@ -22,19 +31,34 @@ const getMediaUrl = async (mediaId, originalUrl, retryCount = 0) => {
     return URL.createObjectURL(response.data);
 
   } catch (error) {
-    console.error(`Media load error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error);
-
-    if (retryCount < MAX_RETRIES) {
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY * Math.pow(2, retryCount)));
-      return getMediaUrl(mediaId, originalUrl, retryCount + 1);
+    if (error.name === 'CanceledError' || error.name === 'AbortError') {
+      console.warn(`Media load canceled for ${mediaId}`);
+      return originalUrl ? getFullUrl(originalUrl) : PLACEHOLDER_IMAGE;
     }
 
-    if (originalUrl) {
-      console.warn(`Using fallback URL for ${mediaId}`);
-      return getFullUrl(originalUrl);
+    const isTimeout = error.code === 'ECONNABORTED' || error.message.includes('timeout');
+    console.error(`Media load error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, {
+      mediaId,
+      error: error.message,
+      isTimeout,
+      retryCount
+    });
+
+    // Add exponential backoff with jitter
+    if (retryCount < MAX_RETRIES && !signal.aborted) {
+      const jitter = Math.random() * 1000;
+      const delay = (RETRY_DELAY * Math.pow(2, retryCount)) + jitter;
+      console.log(`Retrying in ${Math.round(delay/1000)}s with timeout: ${timeout * (retryCount + 2)}ms`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return getMediaUrl(mediaId, originalUrl, {
+        ...options,
+        retryCount: retryCount + 1,
+        signal,
+        timeout: timeout * (retryCount + 2)
+      });
     }
 
-    return error.response?.status === 404 ? PLACEHOLDER_IMAGE : null;
+    return originalUrl ? getFullUrl(originalUrl) : PLACEHOLDER_IMAGE;
   }
 };
 
