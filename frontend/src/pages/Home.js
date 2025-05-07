@@ -445,7 +445,7 @@ function Home() {
                     <h4 className="font-medium text-gray-800 truncate group-hover:text-purple-600 transition-colors">
                       {profile.firstName} {profile.lastName}
                     </h4>
-                    <p className="text-sm text-gray-500 truncate mb-2 group-hover:text-gray-600 transition-colors">{profile.email}</p>
+                    <p className="text-sm text-gray-500 truncate mb-2">{profile.bio}</p>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
