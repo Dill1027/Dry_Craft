@@ -55,12 +55,9 @@ const ProductDetail = () => {
       await sendMessage(product.sellerId, user.id, product.id, message.trim());
       setMessage('');
       setShowMessageModal(false);
-      // Show success notification and navigate to messages
+      // Show success notification
       setSuccess('Message sent successfully');
-      setTimeout(() => {
-        setSuccess(null);
-        navigate('/messages');
-      }, 1500);
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError('Failed to send message. Please try again.');
     } finally {

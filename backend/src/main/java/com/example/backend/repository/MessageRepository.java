@@ -6,16 +6,26 @@ import org.springframework.data.mongodb.repository.Query;
 import java.util.List;
 
 public interface MessageRepository extends MongoRepository<Message, String> {
+
     List<Message> findBySellerId(String sellerId);
+
     List<Message> findByBuyerId(String buyerId);
+
     List<Message> findBySellerIdAndIsReadFalse(String sellerId);
+
+    List<Message> findByBuyerIdOrderByCreatedAtDesc(String buyerId);
+
     List<Message> findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByCreatedAtDesc(
-        String senderId1, String receiverId1, String senderId2, String receiverId2);
+        String senderId1, String receiverId1, String senderId2, String receiverId2
+    );
+
     List<Message> findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByCreatedAtAsc(
-        String senderId1, String receiverId1, String senderId2, String receiverId2);
+        String senderId1, String receiverId1, String senderId2, String receiverId2
+    );
+
     List<Message> findByBuyerIdOrSellerIdOrderByCreatedAtDesc(String userId1, String userId2);
 
-    @Query(value = "{ $or: [ {'senderId': ?0}, {'receiverId': ?0} ] }", 
+    @Query(value = "{ $or: [ {'senderId': ?0}, {'receiverId': ?0} ] }",
            sort = "{ 'createdAt': -1 }")
     List<Message> findMessageHistory(String userId);
 

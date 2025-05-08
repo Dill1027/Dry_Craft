@@ -18,6 +18,13 @@ function TutorialForm() {
   const [imagePreviewUrls, setImagePreviewUrls] = useState([]);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState('');
   const [progress, setProgress] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const [uploadData, setUploadData] = useState(null);
+  const [uploadProgress, setUploadProgress] = useState({
+    video: 0,
+    images: 0,
+    total: 0
+  });
 
   // Add craft types constant
   const craftTypes = [
@@ -33,12 +40,14 @@ function TutorialForm() {
     'Other'
   ];
 
-  const resetMediaInputs = () => {
+  const clearImages = () => {
     imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
-    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
-
     setImages([]);
     setImagePreviewUrls([]);
+  };
+
+  const clearVideo = () => {
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
     setVideo(null);
     setVideoPreviewUrl('');
   };
@@ -47,7 +56,8 @@ function TutorialForm() {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    if (video) resetMediaInputs();
+    // Clear existing previews first
+    imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
 
     const validImages = files.every(file => file.type.startsWith('image/'));
     if (!validImages) {
@@ -63,10 +73,7 @@ function TutorialForm() {
 
     setImages(files);
     const urls = files.map(file => URL.createObjectURL(file));
-    setImagePreviewUrls(prev => {
-      prev.forEach(url => URL.revokeObjectURL(url));
-      return urls;
-    });
+    setImagePreviewUrls(urls);
     setError('');
   };
 
@@ -74,10 +81,14 @@ function TutorialForm() {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (images.length > 0) resetMediaInputs();
+    // Clear existing preview first
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+    }
 
-    if (file.size > 50 * 1024 * 1024) {
-      setError('Video must be less than 50MB');
+    // Update size limit to 500MB (500 * 1024 * 1024 bytes)
+    if (file.size > 500 * 1024 * 1024) {
+      setError('Video must be less than 500MB');
       return;
     }
 
@@ -91,12 +102,9 @@ function TutorialForm() {
     videoElement.preload = 'metadata';
 
     videoElement.onloadedmetadata = () => {
-      window.URL.revokeObjectURL(videoElement.src);
-
       if (videoElement.duration > 30) {
+        URL.revokeObjectURL(videoURL);
         setError('Video must be 30 seconds or less');
-        setVideo(null);
-        setVideoPreviewUrl('');
         return;
       }
 
@@ -106,8 +114,8 @@ function TutorialForm() {
     };
 
     videoElement.onerror = () => {
+      URL.revokeObjectURL(videoURL);
       setError('Could not load video. Please try a different file.');
-      window.URL.revokeObjectURL(videoElement.src);
     };
 
     videoElement.src = videoURL;
@@ -115,14 +123,49 @@ function TutorialForm() {
 
   useEffect(() => {
     return () => {
+      // Cleanup blob URLs when component unmounts
+      imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
       if (videoPreviewUrl) {
         URL.revokeObjectURL(videoPreviewUrl);
       }
     };
-  }, [videoPreviewUrl]);
+  }, [imagePreviewUrls, videoPreviewUrl]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    await submitTutorial();
+  };
+
+  const uploadInChunks = async (file, onProgress) => {
+    const chunkSize = 1024 * 1024 * 2; // 2MB chunks
+    const chunks = Math.ceil(file.size / chunkSize);
+    const formData = new FormData();
+    
+    for (let i = 0; i < chunks; i++) {
+      const chunk = file.slice(
+        i * chunkSize,
+        Math.min(i * chunkSize + chunkSize, file.size)
+      );
+      formData.set('chunk', chunk);
+      formData.set('index', i);
+      formData.set('total', chunks);
+      
+      try {
+        await axiosInstance.post('/api/media/chunk', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (e) => {
+            const chunkProgress = (e.loaded / e.total) * 100;
+            const totalProgress = ((i + (chunkProgress / 100)) / chunks) * 100;
+            onProgress(Math.round(totalProgress));
+          }
+        });
+      } catch (error) {
+        throw new Error(`Failed to upload chunk ${i + 1}/${chunks}`);
+      }
+    }
+  };
+
+  const submitTutorial = async (isRetry = false) => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) {
       setError('Please login to create a tutorial');
@@ -130,15 +173,87 @@ function TutorialForm() {
     }
 
     try {
-      setLoading(true);
+      if (!isRetry) {
+        setLoading(true);
+      } else {
+        setRetrying(true); 
+      }
       setError('');
+      setProgress(0);
 
       const formDataToSend = new FormData();
       formDataToSend.append('userId', user.id);
       formDataToSend.append('title', formData.title.trim());
       formDataToSend.append('description', formData.description.trim());
-      formDataToSend.append('craftType', formData.craftType); // Add this line
+      formDataToSend.append('craftType', formData.craftType);
 
+      // Store form data for retry
+      if (!isRetry) {
+        setUploadData({
+          formData: formData,
+          images: images,
+          video: video
+        });
+      }
+
+      // Handle media files first
+      const processedImages = [];
+      if (images?.length > 0) {
+        for (const image of images) {
+          if (image.size > 1024 * 1024) {
+            processedImages.push(await compressImage(image));
+          } else {
+            processedImages.push(image);
+          }
+        }
+      }
+
+      // Handle video upload first if present
+      if (video) {
+        try {
+          await uploadInChunks(video, (progress) => {
+            setUploadProgress(prev => ({
+              ...prev,
+              video: progress,
+              total: (progress + (prev.images || 0)) / 2
+            }));
+          });
+        } catch (error) {
+          setError('Video upload failed. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Handle images
+      if (processedImages.length > 0) {
+        const imagePromises = processedImages.map(async (img, index) => {
+          await uploadInChunks(img, (progress) => {
+            setUploadProgress(prev => {
+              const imageProgress = prev.images || 0;
+              const newImageProgress = (imageProgress + (progress / processedImages.length));
+              return {
+                ...prev,
+                images: newImageProgress,
+                total: (newImageProgress + (prev.video || 0)) / 2
+              };
+            });
+          });
+        });
+
+        try {
+          await Promise.all(imagePromises);
+        } catch (error) {
+          setError('Image upload failed. Please try again.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Update the main progress bar based on total progress
+      setProgress(uploadProgress.total);
+
+      // Add other data
       const filteredSteps = formData.steps.filter(step => step.trim());
       const filteredMaterials = formData.materials.filter(material => material.trim());
 
@@ -148,26 +263,13 @@ function TutorialForm() {
         return;
       }
 
-      filteredSteps.forEach((step) => {
-        formDataToSend.append('steps', step);
-      });
+      filteredSteps.forEach(step => formDataToSend.append('steps', step));
+      filteredMaterials.forEach(material => formDataToSend.append('materials', material));
 
-      filteredMaterials.forEach((material) => {
-        formDataToSend.append('materials', material);
-      });
-
-      if (images && images.length > 0) {
-        images.forEach(image => {
-          formDataToSend.append('images', image);
-        });
-      }
-
-      if (video) {
-        formDataToSend.append('video', video);
-      }
-
-      const response = await axiosInstance.uploadMedia('/api/tutorials', formDataToSend, {
-        timeout: 300000,
+      // Upload with retry logic
+      await axiosInstance.uploadMedia('/api/tutorials', formDataToSend, {
+        timeout: 600000,
+        retries: 3,
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setProgress(progress);
@@ -178,13 +280,58 @@ function TutorialForm() {
 
     } catch (err) {
       console.error('Error creating tutorial:', err);
-      const errorMsg = err.code === 'ECONNABORTED'
-        ? 'Upload timed out. Please try again with a smaller file or check your connection'
-        : err.response?.data?.message || 'Failed to create tutorial';
+      let errorMsg;
+      
+      if (err.code === 'ECONNRESET' || err.code === 'ERR_NETWORK') {
+        errorMsg = 'Connection lost. Click retry to attempt upload again.';
+      } else if (err.code === 'ECONNABORTED') {
+        errorMsg = 'Upload timed out. Please try again with a smaller file or check your connection.';
+      } else {
+        errorMsg = err.response?.data?.message || 'Failed to create tutorial';
+      }
+      
       setError(errorMsg);
     } finally {
       setLoading(false);
+      setRetrying(false);
     }
+  };
+
+  // Add image compression utility
+  const compressImage = async (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const maxWidth = 1920;
+          const maxHeight = 1080;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth || height > maxHeight) {
+            const ratio = Math.min(maxWidth / width, maxHeight / height);
+            width *= ratio;
+            height *= ratio;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            resolve(new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            }));
+          }, 'image/jpeg', 0.8);
+        };
+        img.src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   const addStep = () => {
@@ -200,6 +347,81 @@ function TutorialForm() {
       materials: [...formData.materials, '']
     });
   };
+
+  const renderError = () => (
+    <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg animate-shake">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center text-red-700">
+          <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
+          </svg>
+          {error}
+        </div>
+        {(error.includes('Connection lost') || error.includes('timed out')) && (
+          <button
+            type="button"
+            onClick={() => submitTutorial(true)}
+            disabled={retrying}
+            className="ml-4 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 
+                     rounded-lg transition-colors duration-200 disabled:opacity-50 flex items-center"
+          >
+            {retrying ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                Retrying...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Retry
+              </>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderProgress = () => (
+    <div className="mb-4">
+      {video && (
+        <div className="mb-2">
+          <span className="text-sm text-gray-600">Video: {uploadProgress.video.toFixed(1)}%</span>
+          <div className="h-2 bg-gray-200 rounded-full">
+            <div 
+              className="h-2 bg-indigo-600 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress.video}%` }}
+            />
+          </div>
+        </div>
+      )}
+      {images.length > 0 && (
+        <div className="mb-2">
+          <span className="text-sm text-gray-600">Images: {uploadProgress.images.toFixed(1)}%</span>
+          <div className="h-2 bg-gray-200 rounded-full">
+            <div 
+              className="h-2 bg-purple-600 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress.images}%` }}
+            />
+          </div>
+        </div>
+      )}
+      <div>
+        <span className="text-sm text-gray-600">Total Progress: {uploadProgress.total.toFixed(1)}%</span>
+        <div className="h-2 bg-gray-200 rounded-full">
+          <div 
+            className="h-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-300"
+            style={{ width: `${uploadProgress.total}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
@@ -222,16 +444,8 @@ function TutorialForm() {
             Create Tutorial
           </h2>
 
-          {error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg animate-shake">
-              <div className="flex items-center text-red-700">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"/>
-                </svg>
-                {error}
-              </div>
-            </div>
-          )}
+          {error && renderError()}
+          {loading && renderProgress()}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
@@ -423,7 +637,7 @@ function TutorialForm() {
                     {imagePreviewUrls.length > 0 && (
                       <button
                         type="button"
-                        onClick={resetMediaInputs}
+                        onClick={clearImages}
                         className="mt-2 text-sm text-red-600 hover:text-red-800"
                       >
                         Clear Images
@@ -437,6 +651,11 @@ function TutorialForm() {
                               src={url}
                               alt={`Preview ${index + 1}`}
                               className="w-full h-32 object-cover"
+                              onError={() => {
+                                console.error(`Failed to load preview for image ${index}`);
+                                const newUrls = imagePreviewUrls.filter((_, i) => i !== index);
+                                setImagePreviewUrls(newUrls);
+                              }}
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                           </div>
@@ -448,7 +667,7 @@ function TutorialForm() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Video (Optional)
-                      <span className="text-xs text-gray-500 ml-2">Max 50MB, 30 sec</span>
+                      <span className="text-xs text-gray-500 ml-2">Max 500MB, 30 sec</span>
                     </label>
                     <input
                       type="file"
@@ -459,7 +678,7 @@ function TutorialForm() {
                     {videoPreviewUrl && (
                       <button
                         type="button"
-                        onClick={resetMediaInputs}
+                        onClick={clearVideo}
                         className="mt-2 text-sm text-red-600 hover:text-red-800"
                       >
                         Clear Video
@@ -471,18 +690,16 @@ function TutorialForm() {
                           src={videoPreviewUrl} 
                           className="w-full h-48 object-cover rounded-lg" 
                           controls
+                          onError={(e) => {
+                            console.error('Video preview error:', e);
+                            clearVideo();
+                            setError('Failed to load video preview');
+                          }}
                         />
                       </div>
                     )}
                   </div>
                 </div>
-                <p className="text-xs text-gray-500 flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                  </svg>
-                  You can add either images or a video, but not both.
-                </p>
               </div>
             </div>
 

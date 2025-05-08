@@ -26,9 +26,12 @@ function Post({
   const [newComment, setNewComment] = useState("");
   const [editingCommentIndex, setEditingCommentIndex] = useState(null);
   const [editCommentContent, setEditCommentContent] = useState('');
-  const [currentReaction, setCurrentReaction] = useState(post?.userReaction || null);
+  const [currentReaction, setCurrentReaction] = useState(() => {
+    const savedReaction = localStorage.getItem(`post_${post.id}_reaction`);
+    return savedReaction || post?.userReaction || null;
+  });
   const [reactionCounts, setReactionCounts] = useState(() => {
-    return post?.reactionCounts || { LIKE: 0, HEART: 0 };
+    return post?.reactionCounts || {};
   });
   const [showReactionMenu, setShowReactionMenu] = useState(false);
   const [isHoveringReaction, setIsHoveringReaction] = useState(false);
@@ -57,52 +60,64 @@ function Post({
   };
 
   const loadMedia = async () => {
-    try {
-      setVideoError(false);
-      const newMediaUrls = {};
+    const newMediaUrls = {};
+    const abortController = new AbortController();
 
+    try {
       if (post.videoUrl) {
         const mediaId = post.videoUrl.split("/").pop();
         try {
           const videoUrl = await getMediaUrl(mediaId, post.videoUrl, {
-            retries: 2,
-            retryDelay: 1000,
-            timeout: 20000
+            signal: abortController.signal,
+            timeout: 60000 // Set initial timeout to 60 seconds for videos
           });
           if (videoUrl) {
             newMediaUrls.video = videoUrl;
+          } else {
+            newMediaUrls.video = getFullUrl(post.videoUrl);
           }
         } catch (error) {
-          console.error('Error loading video:', error);
+          console.error('Video load failed:', error);
           newMediaUrls.video = getFullUrl(post.videoUrl);
         }
       }
 
-      if (post.imageUrls?.length) {
-        for (const url of post.imageUrls) {
+      if (!abortController.signal.aborted && post.imageUrls?.length) {
+        await Promise.all(post.imageUrls.map(async (url) => {
           const mediaId = url.split("/").pop();
           try {
-            const mediaUrl = await getMediaUrl(mediaId, url);
+            const mediaUrl = await getMediaUrl(mediaId, url, {
+              signal: abortController.signal,
+              timeout: 30000 // Set initial timeout to 30 seconds for images
+            });
             if (mediaUrl) newMediaUrls[mediaId] = mediaUrl;
           } catch (error) {
-            console.error(`Error loading image ${mediaId}:`, error);
-            newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
+            if (!abortController.signal.aborted) {
+              console.error(`Error loading image ${mediaId}:`, error);
+              newMediaUrls[mediaId] = PLACEHOLDER_IMAGE;
+            }
           }
-        }
+        }));
       }
 
-      setMediaUrls(prevUrls => {
-        Object.values(prevUrls).forEach(url => {
-          if (url?.startsWith('blob:')) {
-            URL.revokeObjectURL(url);
-          }
+      if (!abortController.signal.aborted) {
+        setMediaUrls(prevUrls => {
+          Object.values(prevUrls).forEach(url => {
+            if (url?.startsWith('blob:')) {
+              URL.revokeObjectURL(url);
+            }
+          });
+          return {...prevUrls, ...newMediaUrls};
         });
-        return {...prevUrls, ...newMediaUrls};
-      });
+      }
     } catch (error) {
-      console.error('Error in loadMedia:', error);
-      setError("Failed to load media content");
+      if (!abortController.signal.aborted) {
+        console.error('Error in loadMedia:', error);
+        setError("Failed to load media content");
+      }
     }
+
+    return () => abortController.abort();
   };
 
   const handleVideoError = async (e) => {
@@ -164,7 +179,19 @@ function Post({
     if (post?.reactionCounts) {
       setReactionCounts(post.reactionCounts);
     }
-  }, [post?.reactionCounts]);
+    if (post?.userReaction) {
+      setCurrentReaction(post.userReaction);
+      localStorage.setItem(`post_${post.id}_reaction`, post.userReaction);
+    }
+  }, [post]);
+
+  useEffect(() => {
+    if (currentReaction) {
+      localStorage.setItem(`post_${post.id}_reaction`, currentReaction);
+    } else {
+      localStorage.removeItem(`post_${post.id}_reaction`);
+    }
+  }, [currentReaction, post.id]);
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
@@ -345,48 +372,55 @@ function Post({
     const oldCounts = { ...reactionCounts };
 
     try {
-      // Toggle reaction if clicking the same type
       const newReactionType = currentReaction === reactionType ? null : reactionType;
       
       // Optimistic update
       setCurrentReaction(newReactionType);
       const updatedCounts = { ...reactionCounts };
       
-      // Remove old reaction count
       if (oldReaction) {
         updatedCounts[oldReaction] = Math.max(0, (updatedCounts[oldReaction] || 0) - 1);
       }
       
-      // Add new reaction count
       if (newReactionType) {
         updatedCounts[newReactionType] = (updatedCounts[newReactionType] || 0) + 1;
         setIsHoveringReaction(true);
       }
       setReactionCounts(updatedCounts);
 
-      // Make API call
       const response = await axiosInstance.post(`/api/posts/${post.id}/reactions`, {
         userId: user.id,
         reactionType: newReactionType
       });
 
-      // Update with server response
       if (response.data) {
         setCurrentReaction(response.data.userReaction);
-        setReactionCounts(response.data.reactionCounts);
+        setReactionCounts(response.data.reactionCounts || {});
+        
+        if (response.data.userReaction) {
+          localStorage.setItem(`post_${post.id}_reaction`, response.data.userReaction);
+        } else {
+          localStorage.removeItem(`post_${post.id}_reaction`);
+        }
+
+        // Update the post in parent component
+        onPostUpdated({
+          ...post,
+          userReaction: response.data.userReaction,
+          reactionCounts: response.data.reactionCounts
+        });
       }
     } catch (error) {
       // Revert changes on error
       setCurrentReaction(oldReaction);
       setReactionCounts(oldCounts);
       setError("Failed to update reaction");
-      setTimeout(() => setError(null), 3000);
-    } finally {
-      // Cleanup
-      if (isHoveringReaction) {
-        setTimeout(() => setIsHoveringReaction(false), 1000);
+      
+      if (oldReaction) {
+        localStorage.setItem(`post_${post.id}_reaction`, oldReaction);
+      } else {
+        localStorage.removeItem(`post_${post.id}_reaction`);
       }
-      setShowReactionMenu(false);
     }
   };
 

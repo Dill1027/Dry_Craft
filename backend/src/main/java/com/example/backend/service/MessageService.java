@@ -9,10 +9,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import java.util.logging.Logger;
-import java.util.logging.Level;
 
 @Service
 public class MessageService {
@@ -20,7 +20,7 @@ public class MessageService {
 
     @Autowired
     private MessageRepository messageRepository;
-    
+
     @Autowired
     private UserRepository userRepository;
 
@@ -34,27 +34,35 @@ public class MessageService {
         message.setContent(content);
         message.setCreatedAt(LocalDateTime.now());
         message.setRead(false);
-        
+
         Message savedMessage = messageRepository.save(message);
         List<Message> enriched = enrichMessagesWithUserNames(Collections.singletonList(savedMessage));
         return enriched.get(0);
     }
-    
+
     public List<Message> getSellerMessages(String sellerId) {
         return messageRepository.findBySellerId(sellerId);
     }
-    
+
+    public List<Message> getBuyerMessages(String buyerId) {
+        try {
+            return messageRepository.findByBuyerIdOrderByCreatedAtDesc(buyerId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch buyer messages: " + e.getMessage());
+        }
+    }
+
     public List<Message> getUnreadMessages(String sellerId) {
         return messageRepository.findBySellerIdAndIsReadFalse(sellerId);
     }
-    
+
     public Message markAsRead(String messageId) {
         Message message = messageRepository.findById(messageId)
             .orElseThrow(() -> new RuntimeException("Message not found"));
         message.setRead(true);
         return messageRepository.save(message);
     }
-    
+
     public List<Message> getConversation(String userId1, String userId2) {
         if (userId1 == null || userId2 == null) {
             logger.warning("Invalid user IDs provided for conversation");
@@ -80,7 +88,7 @@ public class MessageService {
         try {
             List<Message> messages = messageRepository.findByBuyerIdOrSellerIdOrderByCreatedAtDesc(
                 userId.trim(), userId.trim());
-            
+
             if (messages == null) {
                 return new ArrayList<>();
             }
@@ -94,19 +102,17 @@ public class MessageService {
     public Message replyToMessage(String originalMessageId, String content) {
         Message originalMessage = messageRepository.findById(originalMessageId)
             .orElseThrow(() -> new RuntimeException("Original message not found"));
-        
+
         Message reply = new Message();
-        // Set the IDs correctly for the reply
         reply.setSenderId(originalMessage.getReceiverId());
         reply.setReceiverId(originalMessage.getSenderId());
-        // Keep the same seller/buyer relationship
         reply.setSellerId(originalMessage.getSellerId());
         reply.setBuyerId(originalMessage.getBuyerId());
         reply.setProductId(originalMessage.getProductId());
         reply.setContent(content);
         reply.setCreatedAt(LocalDateTime.now());
         reply.setRead(false);
-        
+
         return messageRepository.save(reply);
     }
 
@@ -130,10 +136,10 @@ public class MessageService {
             }
 
             Map<String, Message> latestMessages = new LinkedHashMap<>();
-            
+
             for (Message message : allMessages) {
                 if (message == null || message.getSenderId() == null || message.getReceiverId() == null) {
-                    continue; // Skip invalid messages
+                    continue;
                 }
 
                 String partnerId;
@@ -142,17 +148,17 @@ public class MessageService {
                 } else if (trimmedUserId.equals(message.getReceiverId())) {
                     partnerId = message.getSenderId();
                 } else {
-                    continue; // Skip if user is not part of the conversation
+                    continue;
                 }
 
-                if (!latestMessages.containsKey(partnerId) || 
-                    (message.getCreatedAt() != null && 
+                if (!latestMessages.containsKey(partnerId) ||
+                    (message.getCreatedAt() != null &&
                      (latestMessages.get(partnerId).getCreatedAt() == null ||
                       message.getCreatedAt().isAfter(latestMessages.get(partnerId).getCreatedAt())))) {
                     latestMessages.put(partnerId, message);
                 }
             }
-            
+
             List<Message> conversations = new ArrayList<>(latestMessages.values());
             return enrichMessagesWithUserNames(conversations);
         } catch (Exception e) {
@@ -165,13 +171,11 @@ public class MessageService {
             return new ArrayList<>();
         }
 
-        // Collect unique user IDs
         Set<String> userIds = messages.stream()
             .flatMap(m -> Stream.of(m.getSenderId(), m.getReceiverId()))
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
 
-        // Batch fetch users
         Map<String, User> userMap = userRepository.findAllById(userIds)
             .stream()
             .collect(Collectors.toMap(
@@ -181,15 +185,12 @@ public class MessageService {
             ));
 
         return messages.stream()
-            .filter(message -> message != null)
+            .filter(Objects::nonNull)
             .peek(message -> {
                 User sender = userMap.get(message.getSenderId());
                 User receiver = userMap.get(message.getReceiverId());
-                
-                message.setSenderName(sender != null ? 
-                    sender.getFirstName() + " " + sender.getLastName() : "Unknown User");
-                message.setReceiverName(receiver != null ? 
-                    receiver.getFirstName() + " " + receiver.getLastName() : "Unknown User");
+                message.setSenderName(sender != null ? sender.getFirstName() + " " + sender.getLastName() : "Unknown User");
+                message.setReceiverName(receiver != null ? receiver.getFirstName() + " " + receiver.getLastName() : "Unknown User");
             })
             .collect(Collectors.toList());
     }

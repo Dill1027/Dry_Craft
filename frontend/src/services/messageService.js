@@ -1,7 +1,7 @@
 import axiosInstance from '../utils/axios';
 
-const DEFAULT_TIMEOUT = 15000; // Reduced from 30000
-const LONG_TIMEOUT = 30000;    // Reduced from 60000
+const DEFAULT_TIMEOUT = 15000;
+const LONG_TIMEOUT = 30000;
 const MAX_RETRIES = 2;
 
 const validateUserId = (userId) => {
@@ -32,8 +32,8 @@ export const markMessageAsRead = (messageId) => {
   return axiosInstance.put(`/api/messages/${messageId}/read`);
 };
 
-export const replyToMessage = (messageId, content) => {
-  return axiosInstance.post(`/api/messages/reply/${messageId}`, { content });
+export const replyToMessage = (messageId, replyContent) => {
+  return axiosInstance.post(`/api/messages/${messageId}/reply`, { replyContent });
 };
 
 export const getConversation = async (userId1, userId2, retryCount = 0) => {
@@ -75,7 +75,7 @@ export const getGroupedConversations = async (userId, searchQuery = '') => {
       params: { search: searchQuery },
       timeout: DEFAULT_TIMEOUT
     });
-    
+
     return { 
       data: response.data || [],
       status: response.status 
@@ -87,4 +87,8 @@ export const getGroupedConversations = async (userId, searchQuery = '') => {
     console.error('Error fetching conversations:', error);
     return { data: [], status: error.response?.status || 500 };
   }
+};
+
+export const getBuyerMessages = (buyerId) => {
+  return axiosInstance.get(`/api/messages/buyer/${buyerId}`);
 };

@@ -2,6 +2,8 @@ package com.example.backend.model;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.Transient;
@@ -22,6 +24,7 @@ public class User implements UserDetails {
     private String bio;
     private boolean enabled = true;
     private String role = "ROLE_USER";  // Add this field
+    private Set<String> followers = new HashSet<>();
 
     @Transient
     private String rawPassword;
@@ -85,6 +88,14 @@ public class User implements UserDetails {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public Set<String> getFollowers() {
+        return followers;
+    }
+
+    public void setFollowers(Set<String> followers) {
+        this.followers = followers;
     }
 
     public String getRawPassword() {

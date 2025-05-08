@@ -73,7 +73,7 @@ const Messages = () => {
 
   useEffect(() => {
     fetchConversations();
-    const interval = setInterval(fetchConversations, 15000); // Reduced from 30000
+    const interval = setInterval(fetchConversations, 15000);
     return () => clearInterval(interval);
   }, [fetchConversations]);
 
@@ -97,7 +97,7 @@ const Messages = () => {
     };
 
     fetchMessages();
-    const interval = setInterval(fetchMessages, 10000); // Reduced from 5000
+    const interval = setInterval(fetchMessages, 10000);
     return () => clearInterval(interval);
   }, [selectedConversation, user.id]);
 
@@ -280,6 +280,7 @@ const Messages = () => {
               </div>
             )}
           </div>
+
           <div className="col-span-2 p-4 flex flex-col h-[80vh]">
             {selectedConversation ? (
               <>

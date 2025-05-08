@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import java.io.IOException;
+import java.io.OutputStream;
 
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,5 +32,13 @@ public class MediaService {
                 options);
                 
         return fileId.toHexString();
+    }
+
+    public void downloadMedia(String fileId, OutputStream outputStream) {
+        try {
+            gridFSBucket.downloadToStream(new ObjectId(fileId), outputStream);
+        } catch (Exception e) {
+            throw new RuntimeException("Error downloading file: " + fileId, e);
+        }
     }
 }

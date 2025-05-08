@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
 import Post from './Post';
@@ -16,20 +16,37 @@ function Profile() {
   const [postsError, setPostsError] = useState('');
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [editingBio, setEditingBio] = useState(false);
+  const [bio, setBio] = useState(user?.bio || '');
+  const [bioError, setBioError] = useState('');
+  const [friends, setFriends] = useState(user?.friends || []);
+  const [followers, setFollowers] = useState([]);
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [followersLoading, setFollowersLoading] = useState(false);
 
   const defaultAvatarUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}/images/default-avatar.png`;
 
   const navigate = useNavigate();
+  const fileInputRef = useRef(null);
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file');
+    // Validate file type
+    const validImageTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+    if (!validImageTypes.includes(file.type)) {
+      setError('Please upload a valid image file (JPEG, PNG, or GIF)');
       return;
     }
 
+    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError('Image must be less than 5MB');
       return;
@@ -38,34 +55,89 @@ function Profile() {
     setImage(file);
     setPreviewUrl(URL.createObjectURL(file));
     setError('');
+    
+    // Automatically trigger upload when file is selected
+    handleSubmit(file);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!image) return;
+  const handleSubmit = async (file) => {
+    if (!file) return;
+
+    if (!user || !user.id) {
+      setError('User session expired. Please login again');
+      localStorage.removeItem('user');
+      setTimeout(() => {
+        window.location.href = '/login';
+      }, 2000);
+      return;
+    }
 
     try {
       setLoading(true);
+      setError('');
       const formData = new FormData();
-      formData.append('image', image);
+      formData.append('image', file);
 
-      const response = await axiosInstance.put(`/api/users/${user.id}/profile-picture`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+      const response = await axiosInstance.put(
+        `/api/users/${user.id}/profile-picture`, 
+        formData, 
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 60000, // Increased to 60 seconds
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity
         }
-      });
+      );
 
-      // Update local storage with new user data
-      const updatedUser = { ...user, profilePicture: response.data.profilePicture };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setUser(updatedUser);
-
-      setSuccess('Profile picture updated successfully');
-      setTimeout(() => setSuccess(''), 3000);
+      if (response.data && response.data.profilePicture) {
+        const updatedUser = { ...user, profilePicture: response.data.profilePicture };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setSuccess('Profile picture updated successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      } else {
+        throw new Error('Invalid server response');
+      }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update profile picture');
+      console.error('Error updating profile picture:', err);
+      let errorMessage = 'Failed to update profile picture. Please try again.';
+      
+      if (err.code === 'ECONNABORTED') {
+        errorMessage = 'Upload timed out. Please try with a smaller image or check your connection.';
+      } else if (err.response?.status === 413) {
+        errorMessage = 'Image is too large. Please choose a smaller image (max 5MB).';
+      }
+      
+      setError(errorMessage);
+      if (err.response?.status === 401) {
+        localStorage.removeItem('user');
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 2000);
+      }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleBioUpdate = async () => {
+    try {
+      const response = await axiosInstance.put(`/api/users/${user.id}/bio`, {
+        bio: bio.trim()
+      });
+
+      if (response.data && response.data.bio !== undefined) {
+        const updatedUser = { ...user, bio: response.data.bio };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setEditingBio(false);
+        setSuccess('Bio updated successfully');
+        setTimeout(() => setSuccess(''), 3000);
+      }
+    } catch (err) {
+      setBioError(err.response?.data?.message || 'Failed to update bio');
     }
   };
 
@@ -75,6 +147,19 @@ function Profile() {
       setNotifications(response.data || []);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const fetchFollowers = async () => {
+    if (!user?.id) return;
+    try {
+      setFollowersLoading(true);
+      const response = await axiosInstance.get(`/api/users/${user.id}/followers`);
+      setFollowers(response.data || []);
+    } catch (err) {
+      console.error('Error fetching followers:', err);
+    } finally {
+      setFollowersLoading(false);
     }
   };
 
@@ -99,9 +184,38 @@ function Profile() {
     }
   }, [user?.id]);
 
+  useEffect(() => {
+    if (user?.id) {
+      fetchFollowers();
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user?.id) return;
+      
+      try {
+        const response = await axiosInstance.get(`/api/users/${user.id}`);
+        const userData = response.data;
+        
+        // Update the local user data with the latest from server
+        const updatedUser = { ...user, ...userData };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        setBio(userData.bio || '');
+        
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+        setError('Failed to load user data');
+      }
+    };
+
+    fetchUserData();
+  }, [user?.id]);
+
   const fetchUserPosts = async () => {
     if (!user?.id) return;
-    
+
     try {
       setPostsLoading(true);
       const response = await axiosInstance.get(`/api/posts/user/${user.id}`);
@@ -118,7 +232,7 @@ function Profile() {
   };
 
   const handlePostUpdated = (updatedPost) => {
-    setPosts(posts.map(post => 
+    setPosts(posts.map(post =>
       post.id === updatedPost.id ? updatedPost : post
     ));
   };
@@ -232,7 +346,8 @@ function Profile() {
             <div className="flex flex-col md:flex-row items-center md:items-start space-y-6 md:space-y-0 md:space-x-8 mb-8">
               {/* Avatar with hover effect */}
               <div 
-                className="relative group"
+                className="relative group cursor-pointer"
+                onClick={triggerFileInput}
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
               >
@@ -247,22 +362,27 @@ function Profile() {
                     }}
                   />
                   {isHovered && (
-                    <div className="absolute inset-0 bg-black bg-opacity-40 rounded-full flex items-center justify-center transition-opacity duration-300">
-                      <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path>
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                      </svg>
+                    <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center transition-all duration-300">
+                      <div className="text-white text-center">
+                        <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        <span className="text-xs">Change Photo</span>
+                      </div>
                     </div>
                   )}
                 </div>
-                <div className="absolute -bottom-2 -right-2 bg-white rounded-full p-1 shadow-md">
-                  <div className="bg-blue-500 rounded-full p-2 text-white">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
-                    </svg>
-                  </div>
-                </div>
               </div>
+
+              {/* Hidden file input */}
+              <input 
+                ref={fileInputRef}
+                type="file" 
+                accept="image/*" 
+                onChange={handleImageChange} 
+                className="hidden" 
+              />
 
               {/* User info */}
               <div className="text-center md:text-left">
@@ -308,66 +428,126 @@ function Profile() {
               </div>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Update Profile Picture
-                </label>
-                <div className="flex items-center space-x-4">
-                  <label className="flex-1 cursor-pointer">
-                    <div className="relative">
-                      <div className="flex items-center justify-center px-6 py-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-blue-500 transition-colors duration-300 group">
-                        <div className="text-center">
-                          <svg className="mx-auto h-12 w-12 text-gray-400 group-hover:text-blue-500 transition-colors duration-300" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                          <p className="mt-1 text-sm text-gray-600 group-hover:text-blue-600 transition-colors duration-300">
-                            {image ? image.name : 'Click to upload an image'}
-                          </p>
-                          <p className="mt-1 text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
-                        </div>
-                      </div>
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        onChange={handleImageChange} 
-                        className="hidden" 
-                      />
+            {/* Bio Section */}
+            <div className="w-full max-w-2xl mx-auto mt-8">
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex space-x-4 items-center">
+                    <h3 className="text-lg font-semibold text-gray-800">Bio</h3>
+                    <button
+                      onClick={() => {
+                        fetchFollowers();
+                        setShowFollowers(true);
+                      }}
+                      className="text-sm text-blue-500 hover:text-blue-600"
+                    >
+                      {followers.length} Followers
+                    </button>
+                  </div>
+                  {!editingBio && (
+                    <button
+                      onClick={() => setEditingBio(true)}
+                      className="text-blue-500 hover:text-blue-600 text-sm"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+                
+                {editingBio ? (
+                  <div className="space-y-4">
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      placeholder="Write something about yourself..."
+                      className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                      rows="4"
+                      maxLength="500"
+                    />
+                    {bioError && (
+                      <p className="text-red-500 text-sm">{bioError}</p>
+                    )}
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingBio(false);
+                          setBio(user?.bio || '');
+                          setBioError('');
+                        }}
+                        className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleBioUpdate}
+                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                      >
+                        Save
+                      </button>
                     </div>
-                  </label>
+                  </div>
+                ) : (
+                  <p className="text-gray-600 whitespace-pre-wrap">
+                    {user?.bio || 'No bio yet. Click edit to add one!'}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Followers Modal */}
+            {showFollowers && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold text-gray-900">Followers</h3>
+                    <button
+                      onClick={() => setShowFollowers(false)}
+                      className="text-gray-500 hover:text-gray-700"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  {followersLoading ? (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                    </div>
+                  ) : followers.length === 0 ? (
+                    <p className="text-center text-gray-500 py-4">No followers yet</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {followers.map((follower) => (
+                        <div
+                          key={follower.id}
+                          className="flex items-center space-x-4 p-3 hover:bg-gray-50 rounded-lg transition-colors"
+                        >
+                          <img
+                            src={follower.profilePicture ? 
+                              (follower.profilePicture.startsWith('/api/') ? 
+                                follower.profilePicture : 
+                                `/api/media/${follower.profilePicture}`
+                              ) : 
+                              defaultAvatarUrl
+                            }
+                            alt={follower.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = defaultAvatarUrl;
+                            }}
+                          />
+                          <div>
+                            <h4 className="font-medium text-gray-900">{follower.name}</h4>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-              
-              <button
-                type="submit"
-                disabled={!image || loading}
-                className={`w-full py-3 px-6 rounded-xl text-white font-medium transition-all duration-300 relative overflow-hidden
-                  ${!image || loading 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 shadow-lg hover:shadow-xl transform hover:-translate-y-1'}`}
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Updating...
-                  </span>
-                ) : (
-                  <span>Update Profile Picture</span>
-                )}
-                {!loading && (
-                  <span className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-                    <span className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-500 opacity-70"></span>
-                    <svg className="relative w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                  </span>
-                )}
-              </button>
-            </form>
+            )}
 
             {/* Posts Section */}
             <div className="mt-12">
