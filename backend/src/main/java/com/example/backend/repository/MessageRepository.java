@@ -31,9 +31,7 @@ public interface MessageRepository extends MongoRepository<Message, String> {
 
     @Query("{ $or: [ " +
            "{ 'senderId': ?0, 'receiverId': ?1 }, " +
-           "{ 'senderId': ?1, 'receiverId': ?0 }, " +
-           "{ 'buyerId': ?0, 'sellerId': ?1 }, " +
-           "{ 'buyerId': ?1, 'sellerId': ?0 } " +
+           "{ 'senderId': ?1, 'receiverId': ?0 } " +
            "] }")
-    List<Message> findMessagesByUsers(String user1, String user2);
+    List<Message> findMessagesByUsers(String user1Id, String user2Id);
 }

@@ -11,6 +11,10 @@ public class Message {
     private String id;
     private String sellerId;
     private String buyerId;
+    private String senderId;
+    private String receiverId;
+    private String senderName;
+    private String receiverName;
     private String productId;
     private String content;
 
@@ -44,6 +48,38 @@ public class Message {
 
     public void setBuyerId(String buyerId) {
         this.buyerId = buyerId;
+    }
+
+    public String getSenderId() {
+        return senderId;
+    }
+
+    public void setSenderId(String senderId) {
+        this.senderId = senderId;
+    }
+
+    public String getReceiverId() {
+        return receiverId;
+    }
+
+    public void setReceiverId(String receiverId) {
+        this.receiverId = receiverId;
+    }
+
+    public String getSenderName() {
+        return senderName;
+    }
+
+    public void setSenderName(String senderName) {
+        this.senderName = senderName;
+    }
+
+    public String getReceiverName() {
+        return receiverName;
+    }
+
+    public void setReceiverName(String receiverName) {
+        this.receiverName = receiverName;
     }
 
     public String getProductId() {
