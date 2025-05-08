@@ -2,8 +2,10 @@ package com.example.backend.controller;
 
 import com.example.backend.model.Message;
 import com.example.backend.model.MessageRequest;
+import com.example.backend.model.ErrorResponse;
 import com.example.backend.service.MessageService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -56,8 +58,21 @@ public class MessageController {
     }
 
     @GetMapping("/user/{userId}")
-    public ResponseEntity<List<Message>> getUserMessages(@PathVariable String userId) {
-        return ResponseEntity.ok(messageService.getUserMessages(userId));
+    public ResponseEntity<?> getUserMessages(@PathVariable String userId) {
+        try {
+            if (userId == null || userId.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("User ID cannot be null or empty"));
+            }
+            List<Message> messages = messageService.getUserMessages(userId);
+            return ResponseEntity.ok(messages);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("Error fetching messages"));
+        }
     }
 
     @GetMapping("/conversation/{userId1}/{userId2}")
@@ -65,5 +80,28 @@ public class MessageController {
             @PathVariable String userId1,
             @PathVariable String userId2) {
         return ResponseEntity.ok(messageService.getConversation(userId1, userId2));
+    }
+
+    @GetMapping("/history/{userId}")
+    public ResponseEntity<List<Message>> getMessageHistory(@PathVariable String userId) {
+        return ResponseEntity.ok(messageService.getMessageHistory(userId));
+    }
+
+    @GetMapping("/conversations/{userId}")
+    public ResponseEntity<?> getGroupedConversations(@PathVariable String userId) {
+        try {
+            if (userId == null || userId.trim().isEmpty()) {
+                return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("User ID cannot be null or empty"));
+            }
+            List<Message> conversations = messageService.getGroupedConversations(userId);
+            return ResponseEntity.ok(conversations);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(new ErrorResponse(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("Error fetching conversations: " + e.getMessage()));
+        }
     }
 }

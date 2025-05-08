@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.backend.model.Tutorial;
 import com.example.backend.model.UserProgress;
+import com.example.backend.model.ErrorResponse;
 import com.example.backend.service.TutorialService;
 
 @RestController
@@ -133,17 +134,5 @@ public class TutorialController {
         // For development, return user ID from token
         // In production, properly validate JWT token
         return token.replace("Bearer ", "");
-    }
-}
-
-class ErrorResponse {
-    private String message;
-    
-    public ErrorResponse(String message) {
-        this.message = message;
-    }
-    
-    public String getMessage() {
-        return message;
     }
 }

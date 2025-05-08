@@ -8,10 +8,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 @Service
 public class MessageService {
+    private static final Logger logger = Logger.getLogger(MessageService.class.getName());
+
     @Autowired
     private MessageRepository messageRepository;
     
@@ -22,14 +28,16 @@ public class MessageService {
         Message message = new Message();
         message.setSellerId(sellerId);
         message.setBuyerId(buyerId);
-        // Set sender and receiver IDs same as seller/buyer for now
-        message.setSenderId(sellerId); 
-        message.setReceiverId(buyerId);
+        message.setSenderId(buyerId); // Set buyer as sender for initial message
+        message.setReceiverId(sellerId); // Set seller as receiver for initial message
         message.setProductId(productId);
         message.setContent(content);
         message.setCreatedAt(LocalDateTime.now());
         message.setRead(false);
-        return messageRepository.save(message);
+        
+        Message savedMessage = messageRepository.save(message);
+        List<Message> enriched = enrichMessagesWithUserNames(Collections.singletonList(savedMessage));
+        return enriched.get(0);
     }
     
     public List<Message> getSellerMessages(String sellerId) {
@@ -48,14 +56,39 @@ public class MessageService {
     }
     
     public List<Message> getConversation(String userId1, String userId2) {
-        List<Message> messages = messageRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByCreatedAtDesc(
-            userId1, userId2, userId2, userId1);
-        return enrichMessagesWithUserNames(messages);
+        if (userId1 == null || userId2 == null) {
+            logger.warning("Invalid user IDs provided for conversation");
+            return new ArrayList<>();
+        }
+        try {
+            List<Message> messages = messageRepository.findMessagesByUsers(userId1.trim(), userId2.trim());
+            List<Message> enriched = enrichMessagesWithUserNames(messages);
+            return enriched.stream()
+                .sorted(Comparator.comparing(Message::getCreatedAt))
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            logger.log(Level.SEVERE, "Error fetching conversation: " + e.getMessage(), e);
+            return new ArrayList<>();
+        }
     }
 
     public List<Message> getUserMessages(String userId) {
-        List<Message> messages = messageRepository.findByBuyerIdOrSellerIdOrderByCreatedAtDesc(userId, userId);
-        return enrichMessagesWithUserNames(messages);
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("User ID cannot be null or empty");
+        }
+
+        try {
+            List<Message> messages = messageRepository.findByBuyerIdOrSellerIdOrderByCreatedAtDesc(
+                userId.trim(), userId.trim());
+            
+            if (messages == null) {
+                return new ArrayList<>();
+            }
+
+            return enrichMessagesWithUserNames(messages);
+        } catch (Exception e) {
+            throw new RuntimeException("Error fetching user messages: " + e.getMessage());
+        }
     }
 
     public Message replyToMessage(String originalMessageId, String content) {
@@ -77,15 +110,87 @@ public class MessageService {
         return messageRepository.save(reply);
     }
 
-    private List<Message> enrichMessagesWithUserNames(List<Message> messages) {
-        messages.forEach(message -> {
-            if (message.getSellerId() != null) {
-                User seller = userRepository.findById(message.getSellerId()).orElse(null);
-                User buyer = userRepository.findById(message.getBuyerId()).orElse(null);
-                if (seller != null) message.setSenderName(seller.getFirstName() + " " + seller.getLastName());
-                if (buyer != null) message.setReceiverName(buyer.getFirstName() + " " + buyer.getLastName());
+    public List<Message> getMessageHistory(String userId) {
+        List<Message> messages = messageRepository.findMessageHistory(userId);
+        return enrichMessagesWithUserNames(messages);
+    }
+
+    public List<Message> getGroupedConversations(String userId) {
+        if (userId == null || userId.trim().isEmpty()) {
+            throw new IllegalArgumentException("User ID cannot be null or empty");
+        }
+
+        try {
+            String trimmedUserId = userId.trim();
+            List<Message> allMessages = messageRepository.findByBuyerIdOrSellerIdOrderByCreatedAtDesc(
+                trimmedUserId, trimmedUserId);
+
+            if (allMessages == null || allMessages.isEmpty()) {
+                return new ArrayList<>();
             }
-        });
-        return messages;
+
+            Map<String, Message> latestMessages = new LinkedHashMap<>();
+            
+            for (Message message : allMessages) {
+                if (message == null || message.getSenderId() == null || message.getReceiverId() == null) {
+                    continue; // Skip invalid messages
+                }
+
+                String partnerId;
+                if (trimmedUserId.equals(message.getSenderId())) {
+                    partnerId = message.getReceiverId();
+                } else if (trimmedUserId.equals(message.getReceiverId())) {
+                    partnerId = message.getSenderId();
+                } else {
+                    continue; // Skip if user is not part of the conversation
+                }
+
+                if (!latestMessages.containsKey(partnerId) || 
+                    (message.getCreatedAt() != null && 
+                     (latestMessages.get(partnerId).getCreatedAt() == null ||
+                      message.getCreatedAt().isAfter(latestMessages.get(partnerId).getCreatedAt())))) {
+                    latestMessages.put(partnerId, message);
+                }
+            }
+            
+            List<Message> conversations = new ArrayList<>(latestMessages.values());
+            return enrichMessagesWithUserNames(conversations);
+        } catch (Exception e) {
+            throw new RuntimeException("Error processing conversations: " + e.getMessage(), e);
+        }
+    }
+
+    private List<Message> enrichMessagesWithUserNames(List<Message> messages) {
+        if (messages == null || messages.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // Collect unique user IDs
+        Set<String> userIds = messages.stream()
+            .flatMap(m -> Stream.of(m.getSenderId(), m.getReceiverId()))
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+
+        // Batch fetch users
+        Map<String, User> userMap = userRepository.findAllById(userIds)
+            .stream()
+            .collect(Collectors.toMap(
+                User::getId,
+                user -> user,
+                (u1, u2) -> u1
+            ));
+
+        return messages.stream()
+            .filter(message -> message != null)
+            .peek(message -> {
+                User sender = userMap.get(message.getSenderId());
+                User receiver = userMap.get(message.getReceiverId());
+                
+                message.setSenderName(sender != null ? 
+                    sender.getFirstName() + " " + sender.getLastName() : "Unknown User");
+                message.setReceiverName(receiver != null ? 
+                    receiver.getFirstName() + " " + receiver.getLastName() : "Unknown User");
+            })
+            .collect(Collectors.toList());
     }
 }
