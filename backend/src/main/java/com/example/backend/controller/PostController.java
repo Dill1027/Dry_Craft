@@ -136,17 +136,9 @@ public class PostController {
     public ResponseEntity<PostResponse> addComment(
             @PathVariable String postId,
             @RequestParam String userId,
-            @RequestParam String content,
-            @RequestParam(required = false) String parentCommentId) {
+            @RequestParam String content) {
         try {
-            PostResponse response;
-            if (parentCommentId != null) {
-                // Handle reply
-                response = postService.addReply(postId, userId, content, parentCommentId);
-            } else {
-                // Handle regular comment
-                response = postService.addComment(postId, userId, content);
-            }
+            PostResponse response = postService.addComment(postId, userId, content);
             
             // Create notification for post owner if commenter is not the owner
             if (!response.getUserId().equals(userId)) {
@@ -157,8 +149,8 @@ public class PostController {
                         userId,
                         commenterName,
                         postId,
-                        String.format(parentCommentId != null ? "replied: %s" : "commented: %s", content),
-                        parentCommentId != null ? "REPLY" : "COMMENT"
+                        String.format("commented: %s", content),
+                        "COMMENT"
                     );
                     logger.log(Level.INFO, "Notification created for user: " + response.getUserId());
                 } catch (Exception e) {
@@ -171,7 +163,7 @@ public class PostController {
             logger.log(Level.WARNING, "Invalid input: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         } catch (Exception e) {
-            logger.log(Level.WARNING, "Error adding comment/reply: " + e.getMessage());
+            logger.log(Level.WARNING, "Error adding comment: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
