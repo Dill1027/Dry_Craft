@@ -3,6 +3,7 @@ package com.example.backend.model;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 @Document(collection = "messages")
 public class Message {
@@ -12,6 +13,8 @@ public class Message {
     private String buyerId;
     private String productId;
     private String content;
+
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
     private boolean isRead;
     private String parentMessageId;  // For tracking replies
