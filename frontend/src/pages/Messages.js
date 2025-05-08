@@ -149,159 +149,146 @@ const Messages = () => {
   if (!user) return <Navigate to="/login" />;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-purple-50 to-blue-50 py-8">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden grid grid-cols-3">
-          <div className="col-span-1 border-r">
-            {/* Add search input before tabs */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden grid grid-cols-3 border border-white/50">
+          {/* Conversations List */}
+          <div className="col-span-1 border-r border-gray-200">
+            {/* Search Bar */}
             <div className="p-4 border-b">
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Search users..."
+                  placeholder="Search conversations..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full px-4 py-2 pl-10 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-3 pl-10 rounded-lg border border-gray-200 
+                           focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                           bg-white/50 backdrop-blur-sm transition-all duration-200"
                 />
                 <svg
-                  className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
+                  className="absolute left-3 top-3.5 h-5 w-5 text-gray-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                 </svg>
               </div>
             </div>
 
+            {/* Tabs */}
             <div className="flex border-b">
-              <button
-                onClick={() => setActiveTab('recent')}
-                className={`flex-1 py-4 text-center font-medium ${
-                  activeTab === 'recent' 
-                    ? 'text-blue-600 border-b-2 border-blue-600' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Recent
-              </button>
-              <button
-                onClick={() => setActiveTab('history')}
-                className={`flex-1 py-4 text-center font-medium ${
-                  activeTab === 'history' 
-                    ? 'text-blue-600 border-b-2 border-blue-600' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Chat
-              </button>
+              {["recent", "history"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 py-4 text-center font-medium transition-all duration-200
+                    ${activeTab === tab 
+                      ? 'text-purple-600 border-b-2 border-purple-600' 
+                      : 'text-gray-500 hover:text-purple-500'}`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
             </div>
 
-            {activeTab === 'recent' ? (
-              error ? (
-                <div className="p-4 text-red-500 text-center">
-                  {error}
+            {/* Conversations */}
+            <div className="overflow-y-auto h-[calc(80vh-8rem)]">
+              {loading ? (
+                <div className="flex justify-center items-center p-8">
+                  <div className="relative">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"/>
+                    <div className="absolute inset-0 rounded-full border-4 border-gray-100"/>
+                  </div>
+                </div>
+              ) : error ? (
+                <div className="p-8 text-center">
+                  <div className="text-red-500 mb-4">{error}</div>
                   <button 
-                    onClick={() => fetchConversations()} 
-                    className="ml-2 text-blue-500 hover:underline"
+                    onClick={() => fetchConversations()}
+                    className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 
+                             transition-colors duration-200"
                   >
                     Retry
                   </button>
                 </div>
-              ) : loading ? (
-                <div className="flex justify-center items-center p-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                </div>
               ) : (
-                filteredConversations.map(conv => {
-                  const isSelected = selectedConversation?.id === conv.id;
-                  const otherName = conv.senderId === user.id ? conv.receiverName : conv.senderName;
-
-                  return (
-                    <button
-                      key={conv.id}
-                      onClick={() => setSelectedConversation(conv)}
-                      className={`w-full p-4 text-left transition-colors duration-200 border-b
-                        ${isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : 'hover:bg-gray-50'}`}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0 w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-gray-600 font-semibold">
-                            {otherName?.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{otherName}</p>
-                          <p className="text-sm text-gray-500 truncate flex items-center gap-2">
-                            <span className={conv.senderId === user.id ? "text-blue-500" : ""}>
-                              {conv.senderId === user.id ? "You: " : `${conv.senderName}: `}
-                            </span>
-                            {conv.content}
-                          </p>
-                        </div>
-                        {!conv.isRead && conv.receiverId === user.id && (
-                          <span className="inline-flex items-center justify-center w-2 h-2 bg-blue-500 rounded-full" />
-                        )}
-                      </div>
-                    </button>
-                  );
-                })
-              )
-            ) : (
-              <div className="overflow-y-auto max-h-[calc(80vh-3rem)]">
-                {historyLoading ? (
-                  <div className="flex justify-center items-center p-4">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                  </div>
-                ) : (
-                  history.map((conv) => {
+                <div className="divide-y divide-gray-100">
+                  {(activeTab === 'recent' ? filteredConversations : history).map(conv => {
                     const otherName = conv.senderId === user.id ? conv.receiverName : conv.senderName;
+                    const isSelected = selectedConversation?.id === conv.id;
+                    
                     return (
                       <button
                         key={conv.id}
                         onClick={() => setSelectedConversation(conv)}
-                        className="w-full p-4 text-left hover:bg-gray-50 border-b flex items-center gap-3"
+                        className={`w-full p-4 text-left transition-all duration-200
+                          ${isSelected 
+                            ? 'bg-purple-50 border-l-4 border-l-purple-500' 
+                            : 'hover:bg-gray-50 border-l-4 border-l-transparent'}`}
                       >
-                        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-gray-600 font-semibold">
+                        <div className="flex items-center space-x-3">
+                          <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-500 
+                                        rounded-full flex items-center justify-center text-white font-bold">
                             {otherName?.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{otherName}</p>
-                          <p className="text-sm text-gray-500">
-                            {conv.createdAt ? new Date(conv.createdAt).toLocaleDateString() : 'No date'}
-                          </p>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-gray-900 truncate">{otherName}</p>
+                            <p className="text-sm text-gray-500 truncate flex items-center gap-1">
+                              {conv.senderId === user.id && 
+                                <span className="text-purple-500 font-medium">You: </span>}
+                              {conv.content}
+                            </p>
+                          </div>
+                          {!conv.isRead && conv.receiverId === user.id && (
+                            <span className="w-3 h-3 bg-purple-500 rounded-full animate-pulse"/>
+                          )}
                         </div>
                       </button>
                     );
-                  })
-                )}
-              </div>
-            )}
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="col-span-2 p-4 flex flex-col h-[80vh]">
+          {/* Messages Area */}
+          <div className="col-span-2 p-6 flex flex-col h-[80vh] bg-gradient-to-br from-gray-50 to-white">
             {selectedConversation ? (
               <>
-                <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+                {/* Chat Header */}
+                <div className="pb-4 mb-4 border-b">
+                  <h2 className="text-xl font-semibold text-gray-800">
+                    {selectedConversation.senderId === user.id 
+                      ? selectedConversation.receiverName 
+                      : selectedConversation.senderName}
+                  </h2>
+                </div>
+
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-4">
                   {messages.map(message => (
                     <div
                       key={message.id}
                       className={`flex ${message.senderId === user.id ? 'justify-end' : 'justify-start'}`}
                     >
                       <div
-                        className={`max-w-[70%] p-3 rounded-lg ${
-                          message.senderId === user.id
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100'
-                        }`}
+                        className={`max-w-[70%] p-4 rounded-2xl shadow-sm
+                          ${message.senderId === user.id
+                            ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                            : 'bg-white border border-gray-100'}`}
                       >
-                        <p className="text-xs font-medium mb-1">
+                        <p className="text-sm font-medium mb-1">
                           {message.senderId === user.id ? 'You' : message.senderName}
                         </p>
-                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                        <p className="text-xs mt-1 opacity-75">
+                        <p className="whitespace-pre-wrap break-words">
+                          {message.content}
+                        </p>
+                        <p className={`text-xs mt-2 ${message.senderId === user.id 
+                          ? 'text-white/75' 
+                          : 'text-gray-500'}`}>
                           {new Date(message.createdAt).toLocaleString()}
                         </p>
                       </div>
@@ -309,26 +296,52 @@ const Messages = () => {
                   ))}
                 </div>
 
+                {/* Message Input */}
                 <form onSubmit={handleSendMessage} className="mt-4 flex gap-2">
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Type your message..."
+                    className="flex-1 px-4 py-3 rounded-lg border border-gray-200 
+                             focus:ring-2 focus:ring-purple-500 focus:border-transparent
+                             bg-white/50 backdrop-blur-sm transition-all duration-200"
                   />
                   <button
                     type="submit"
                     disabled={sending || !newMessage.trim()}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 transition-colors"
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-blue-500 
+                             text-white rounded-lg hover:from-purple-600 hover:to-blue-600 
+                             disabled:opacity-50 disabled:cursor-not-allowed
+                             transition-all duration-200 flex items-center gap-2"
                   >
-                    {sending ? "Sending..." : "Send"}
+                    {sending ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                        Send
+                      </>
+                    )}
                   </button>
                 </form>
               </>
             ) : (
-              <div className="h-full flex items-center justify-center">
-                <p className="text-center text-gray-500">Select a conversation to view messages</p>
+              <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                  <svg className="w-10 h-10 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" 
+                          d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-2">Your Messages</h3>
+                <p className="text-gray-500">Select a conversation to start messaging</p>
               </div>
             )}
           </div>
