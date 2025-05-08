@@ -21,6 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.backend.model.Tutorial;
 import com.example.backend.model.UserProgress;
+import com.example.backend.model.ErrorResponse;
 import com.example.backend.service.TutorialService;
 
 @RestController
@@ -106,10 +107,21 @@ public class TutorialController {
 
     @PutMapping("/{id}")
     public ResponseEntity<Tutorial> updateTutorial(
-            @PathVariable String id,
-            @RequestBody Tutorial tutorial) {
+        @PathVariable String id,
+        @RequestParam("title") String title,
+        @RequestParam("description") String description,
+        @RequestParam("craftType") String craftType,
+        @RequestParam(value = "steps", required = false) List<String> steps,
+        @RequestParam(value = "materials", required = false) List<String> materials,
+        @RequestParam(value = "images", required = false) List<MultipartFile> images,
+        @RequestParam(value = "video", required = false) MultipartFile video,
+        @RequestParam(value = "keepExistingImages", defaultValue = "true") boolean keepExistingImages,
+        @RequestParam(value = "keepExistingVideo", defaultValue = "true") boolean keepExistingVideo
+    ) {
         try {
-            Tutorial updatedTutorial = tutorialService.updateTutorial(id, tutorial);
+            Tutorial updatedTutorial = tutorialService.updateTutorial(
+                id, title, description, steps, materials, craftType,
+                video, images, keepExistingImages, keepExistingVideo);
             return ResponseEntity.ok(updatedTutorial);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -133,17 +145,5 @@ public class TutorialController {
         // For development, return user ID from token
         // In production, properly validate JWT token
         return token.replace("Bearer ", "");
-    }
-}
-
-class ErrorResponse {
-    private String message;
-    
-    public ErrorResponse(String message) {
-        this.message = message;
-    }
-    
-    public String getMessage() {
-        return message;
     }
 }

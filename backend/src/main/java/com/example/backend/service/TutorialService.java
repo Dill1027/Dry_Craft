@@ -193,15 +193,62 @@ public class TutorialService {
         tutorialRepository.deleteById(id);
     }
 
-    public Tutorial updateTutorial(String id, Tutorial updatedTutorial) {
+    public Tutorial updateTutorial(String id, String title, String description, 
+                                 List<String> steps, List<String> materials, 
+                                 String craftType, MultipartFile video, 
+                                 List<MultipartFile> images,
+                                 boolean keepExistingImages,
+                                 boolean keepExistingVideo) throws IOException {
+        
         Tutorial existingTutorial = getTutorialById(id);
         
-        existingTutorial.setTitle(updatedTutorial.getTitle());
-        existingTutorial.setDescription(updatedTutorial.getDescription());
-        existingTutorial.setSteps(updatedTutorial.getSteps());
-        existingTutorial.setMaterials(updatedTutorial.getMaterials());
-        existingTutorial.setCraftType(updatedTutorial.getCraftType()); // Add this line
-        
+        // Update basic fields
+        existingTutorial.setTitle(title);
+        existingTutorial.setDescription(description);
+        existingTutorial.setSteps(steps != null ? steps : new ArrayList<>());
+        existingTutorial.setMaterials(materials != null ? materials : new ArrayList<>());
+        existingTutorial.setCraftType(craftType);
+
+        // Handle media updates
+        List<String> mediaIds = new ArrayList<>();
+
+        // Handle existing media
+        if (keepExistingImages && existingTutorial.getMediaIds() != null) {
+            mediaIds.addAll(existingTutorial.getMediaIds());
+        }
+
+        // Handle new video
+        if (video != null && !video.isEmpty()) {
+            validateVideo(video);
+            // Delete old video if exists
+            if (existingTutorial.getVideoUrl() != null) {
+                String oldVideoId = extractMediaId(existingTutorial.getVideoUrl());
+                gridFSBucket.delete(new org.bson.types.ObjectId(oldVideoId));
+            }
+            String videoId = mediaService.saveMedia(video, "video");
+            mediaIds.add(videoId);
+            existingTutorial.setVideoUrl("/api/media/" + videoId);
+        }
+
+        // Handle new images
+        if (images != null && !images.isEmpty()) {
+            List<String> imageUrls = new ArrayList<>();
+            for (MultipartFile image : images) {
+                if (!image.getContentType().startsWith("image/")) {
+                    throw new IllegalArgumentException("Invalid image format");
+                }
+                String imageId = mediaService.saveMedia(image, "image");
+                mediaIds.add(imageId);
+                imageUrls.add("/api/media/" + imageId);
+            }
+            existingTutorial.setImageUrls(imageUrls);
+        }
+
+        existingTutorial.setMediaIds(mediaIds);
         return tutorialRepository.save(existingTutorial);
+    }
+
+    private String extractMediaId(String url) {
+        return url.substring(url.lastIndexOf("/") + 1);
     }
 }
