@@ -111,4 +111,17 @@ public class MessageController {
                 .body(new ErrorResponse("Error fetching conversations: " + e.getMessage()));
         }
     }
+
+    @GetMapping("/conversation/{userId1}/{userId2}")
+    public ResponseEntity<?> getConversation(
+            @PathVariable String userId1,
+            @PathVariable String userId2) {
+        try {
+            List<Message> conversation = messageService.getConversation(userId1, userId2);
+            return ResponseEntity.ok(conversation);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("Error fetching conversation: " + e.getMessage()));
+        }
+    }
 }
