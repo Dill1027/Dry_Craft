@@ -131,7 +131,7 @@ public class PostController {
             return ResponseEntity.badRequest().build();
         }
     }
-
+    //add commnets to posts 
     @PostMapping("/posts/{postId}/comments")
     public ResponseEntity<PostResponse> addComment(
             @PathVariable String postId,
