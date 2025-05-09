@@ -131,7 +131,7 @@ public class PostController {
             return ResponseEntity.badRequest().build();
         }
     }
-
+    //add commnets to posts 
     @PostMapping("/posts/{postId}/comments")
     public ResponseEntity<PostResponse> addComment(
             @PathVariable String postId,
@@ -143,16 +143,10 @@ public class PostController {
             // Create notification for post owner if commenter is not the owner
             if (!response.getUserId().equals(userId)) {
                 try {
-                    String commenterName;
-                    try {
-                        commenterName = postService.getUserName(userId);
-                    } catch (Exception e) {
-                        commenterName = "Someone"; // Fallback name if user lookup fails
-                    }
-                    
+                    String commenterName = postService.getUserName(userId);
                     notificationService.createNotification(
-                        response.getUserId(),    // recipient (post owner)
-                        userId,                  // sender (commenter)
+                        response.getUserId(),
+                        userId,
                         commenterName,
                         postId,
                         String.format("commented: %s", content),
@@ -165,9 +159,12 @@ public class PostController {
             }
             
             return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            logger.log(Level.WARNING, "Invalid input: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             logger.log(Level.WARNING, "Error adding comment: " + e.getMessage());
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
@@ -231,7 +228,7 @@ public class PostController {
             return ResponseEntity.badRequest().build();
         }
     }
-
+    //delete all comments by post owner 
     @DeleteMapping("/posts/{postId}/comments/all")
     public ResponseEntity<PostResponse> deleteAllComments(
             @PathVariable String postId,
@@ -250,7 +247,7 @@ public class PostController {
             return ResponseEntity.badRequest().build();
         }
     }
-
+    //reactions 
     @PostMapping("/posts/{postId}/reactions")
     public ResponseEntity<PostResponse> handleReaction(
             @PathVariable String postId,

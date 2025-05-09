@@ -106,6 +106,10 @@ public class User implements UserDetails {
         this.rawPassword = rawPassword;
     }
 
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
+
     // UserDetails implementation
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
