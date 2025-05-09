@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
+import { compressImage } from '../utils/imageCompression';
 
 function TutorialForm() {
   const navigate = useNavigate();
@@ -52,12 +53,9 @@ function TutorialForm() {
     setVideoPreviewUrl('');
   };
 
-  const handleImageChange = (e) => {
+  const handleImageChange = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
-
-    // Clear existing previews first
-    imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
 
     const validImages = files.every(file => file.type.startsWith('image/'));
     if (!validImages) {
@@ -65,16 +63,25 @@ function TutorialForm() {
       return;
     }
 
-    const validSizes = files.every(file => file.size <= 5 * 1024 * 1024);
-    if (!validSizes) {
-      setError('Each image must be less than 5MB');
-      return;
+    setLoading(true);
+    try {
+      // Clear existing previews
+      imagePreviewUrls.forEach(url => URL.revokeObjectURL(url));
+      
+      // Compress images and generate previews
+      const compressedFiles = await Promise.all(
+        files.map(file => compressImage(file, 1)) // 1MB target size
+      );
+      
+      setImages(compressedFiles);
+      const urls = compressedFiles.map(file => URL.createObjectURL(file));
+      setImagePreviewUrls(urls);
+      setError('');
+    } catch (err) {
+      setError('Error processing images. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    setImages(files);
-    const urls = files.map(file => URL.createObjectURL(file));
-    setImagePreviewUrls(urls);
-    setError('');
   };
 
   const handleVideoChange = (e) => {
