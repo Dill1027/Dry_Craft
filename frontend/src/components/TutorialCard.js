@@ -68,7 +68,7 @@ function TutorialCard({ tutorial, isManageable = false, onDelete, isPinned = fal
             title="Unpin tutorial"
           >
             <PinIcon 
-              className="w-5 h-5 text-yellow-500 group-hover:text-yellow-600" 
+              className="w-4 h-4 text-yellow-500 group-hover:text-yellow-600" 
               isPinned={true}
               animate={true}
             />

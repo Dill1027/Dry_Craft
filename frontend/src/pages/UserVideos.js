@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../utils/axios';
+import Spinner from '../components/Spinner';
 
 function UserVideos() {
   const [videos, setVideos] = useState([]);
@@ -38,7 +39,7 @@ function UserVideos() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-purple-500"></div>
+        <Spinner size="xl" color="purple" />
       </div>
     );
   }
