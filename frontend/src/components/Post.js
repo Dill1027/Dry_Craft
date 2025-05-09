@@ -346,14 +346,16 @@ function Post({
     }
   };
 
-  const isCommentAuthor = (comment) => {
+  const canDeleteComment = (comment) => {
     const authorId = comment.split('|')[0];
+    // Only comment author can delete their comment 
     return user && user.id === authorId;
   };
 
-  const canDeleteComment = (comment) => {
+  const isCommentAuthor = (comment) => {
     const authorId = comment.split('|')[0];
-    return user && (user.id === authorId || user.id === post.userId);
+    // Only comment author can edit their comment
+    return user && user.id === authorId;
   };
 
   const getCommentContent = (comment) => {
