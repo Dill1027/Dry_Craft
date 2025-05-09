@@ -21,7 +21,6 @@ import com.example.backend.model.Post;
 import com.example.backend.model.PostResponse;
 import com.example.backend.model.Reaction;
 import com.example.backend.model.User;
-import com.example.backend.model.Comment;
 import com.example.backend.repository.PostRepository;
 import com.example.backend.repository.UserRepository;
 import com.mongodb.client.gridfs.GridFSBucket;
@@ -384,20 +383,6 @@ public class PostService {
                 .orElseThrow(() -> new IllegalArgumentException("Post not found"));
         
         post.setComments(new ArrayList<>());
-        post = postRepository.save(post);
-        
-        return convertToPostResponse(post);
-    }
-
-    public PostResponse addReply(String postId, String userId, String content, String parentCommentId) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post not found"));
-
-        User user = getUserDetails(userId);
-        String authorName = user.getFirstName() + " " + user.getLastName();
-        String replyText = userId + "|" + authorName + "|" + parentCommentId + ": " + content;
-        
-        post.getComments().add(replyText);
         post = postRepository.save(post);
         
         return convertToPostResponse(post);
