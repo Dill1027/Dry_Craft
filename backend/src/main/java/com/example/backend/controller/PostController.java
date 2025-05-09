@@ -247,7 +247,7 @@ public class PostController {
             return ResponseEntity.badRequest().build();
         }
     }
-
+    //reactions 
     @PostMapping("/posts/{postId}/reactions")
     public ResponseEntity<PostResponse> handleReaction(
             @PathVariable String postId,
