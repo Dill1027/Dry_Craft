@@ -7,8 +7,25 @@ function MyTutorials() {
   const [tutorials, setTutorials] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedCraftType, setSelectedCraftType] = useState('All');
+  const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user'));
+  
+  const craftTypes = [
+    'All',
+    'Paper Craft',
+    'Wood Craft', 
+    'Textile Craft',
+    'Pottery',
+    'Jewelry Making',
+    'Metal Craft',
+    'Glass Craft',
+    'Leather Craft',
+    'Mixed Media',
+    'Other'
+  ];
+
   const [editingTutorial, setEditingTutorial] = useState(null);
   const [editFormData, setEditFormData] = useState({
     title: '',
@@ -43,6 +60,13 @@ function MyTutorials() {
       setLoading(false);
     }
   };
+
+  const filteredTutorials = tutorials.filter(tutorial => (
+    (selectedCraftType === 'All' || 
+    tutorial.craftType?.toLowerCase() === selectedCraftType.toLowerCase()) &&
+    (tutorial.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    tutorial.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+  ));
 
   const handleEdit = (tutorial) => {
     setEditingTutorial(tutorial);
@@ -136,6 +160,44 @@ function MyTutorials() {
             </svg>
             <span className="font-medium">Back to Tutorials</span>
           </button>
+
+          <div className="flex items-center gap-4">
+          <select
+              value={selectedCraftType}
+              onChange={(e) => setSelectedCraftType(e.target.value)}
+              className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 
+                       focus:border-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
+            >
+              {craftTypes.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+
+
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search tutorials..."
+                className="w-64 px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 
+                         focus:border-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200
+                         pl-10"
+              />
+              <svg 
+                className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth="2" 
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </div>
           
           <button
             onClick={() => navigate('/tutorials/create')}
@@ -148,6 +210,7 @@ function MyTutorials() {
             </svg>
             Create Tutorial
           </button>
+        </div>
         </div>
       </header>
 
