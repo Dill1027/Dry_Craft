@@ -430,7 +430,7 @@ function Post({
       }
     }
   };
-
+  //delete comment
   const canDeleteComment = (comment) => {
     const authorId = comment.split('|')[0];
     // Only comment author can delete their comment 
