@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import PropTypes from 'prop-types';
+import Swal from 'sweetalert2';
 import axiosInstance from "../utils/axios";
 import { getFullUrl, handleImageError, getMediaUrl } from '../utils/mediaUtils';
 
@@ -273,10 +274,26 @@ function Post({
       );
       setComments(response.data.comments);
       setNewComment("");
+      Swal.fire({
+        title: 'Success!',
+        text: 'Comment added successfully',
+        icon: 'success',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
     } catch (error) {
       console.error('Error adding comment:', error);
-      setError("Failed to add comment");
-      setTimeout(() => setError(null), 3000);
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to add comment',
+        icon: 'error',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
     }
   };
 
@@ -303,46 +320,114 @@ function Post({
       setComments(response.data.comments);
       setEditingCommentIndex(null);
       setEditCommentContent('');
+      Swal.fire({
+        title: 'Success!',
+        text: 'Comment updated successfully',
+        icon: 'success',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
     } catch (error) {
       console.error('Error updating comment:', error);
-      setError("Failed to update comment");
-      setTimeout(() => setError(null), 3000);
+      Swal.fire({
+        title: 'Error!',
+        text: 'Failed to update comment',
+        icon: 'error',
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000
+      });
     }
   };
 
   const handleDeleteComment = async (index) => {
-    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete it!'
+    });
 
-    try {
-      const response = await axiosInstance.delete(
-        `/api/posts/${post.id}/comments/${index}`,
-        {
-          params: { userId: user.id }
-        }
-      );
-      setComments(response.data.comments);
-    } catch (error) {
-      console.error('Error deleting comment:', error);
-      setError("Failed to delete comment");
-      setTimeout(() => setError(null), 3000);
+    if (result.isConfirmed) {
+      try {
+        const response = await axiosInstance.delete(
+          `/api/posts/${post.id}/comments/${index}`,
+          {
+            params: { userId: user.id }
+          }
+        );
+        setComments(response.data.comments);
+        Swal.fire({
+          title: 'Deleted!',
+          text: 'Comment has been deleted.',
+          icon: 'success',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000
+        });
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to delete comment',
+          icon: 'error',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000
+        });
+      }
     }
   };
 
   const handleDeleteAllComments = async () => {
-    if (!window.confirm('Are you sure you want to delete all comments on this post?')) return;
+    const result = await Swal.fire({
+      title: 'Delete all comments?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, delete all!'
+    });
 
-    try {
-      const response = await axiosInstance.delete(
-        `/api/posts/${post.id}/comments/all`,
-        {
-          params: { userId: user.id }
-        }
-      );
-      setComments(response.data.comments);
-    } catch (error) {
-      console.error('Error deleting all comments:', error);
-      setError("Failed to delete all comments");
-      setTimeout(() => setError(null), 3000);
+    if (result.isConfirmed) {
+      try {
+        const response = await axiosInstance.delete(
+          `/api/posts/${post.id}/comments/all`,
+          {
+            params: { userId: user.id }
+          }
+        );
+        setComments(response.data.comments);
+        Swal.fire({
+          title: 'Deleted!',
+          text: 'All comments have been deleted.',
+          icon: 'success',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000
+        });
+      } catch (error) {
+        console.error('Error deleting all comments:', error);
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to delete comments',
+          icon: 'error',
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000
+        });
+      }
     }
   };
 
