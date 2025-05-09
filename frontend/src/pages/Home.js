@@ -108,12 +108,12 @@ function Home() {
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    setRetryCount(0);
+    setRetryCount(0); // Reset retry count on manual refresh
     fetchPosts(0);
   };
 
   const handlePostCreated = (newPost) => {
-    setPosts(currentPosts => [newPost, ...currentPosts]);
+    setPosts([newPost, ...posts]);
     triggerCelebration();
   };
 
@@ -123,15 +123,18 @@ function Home() {
   };
 
   const handlePostDeleted = (postId) => {
-    setPosts(currentPosts => currentPosts.filter(post => post.id !== postId));
+    setPosts(posts.filter((post) => post.id !== postId));
   };
 
   const handlePostUpdated = (updatedPost) => {
-    setPosts(currentPosts =>
-      currentPosts.map(post =>
-        post.id === updatedPost.id ? updatedPost : post
-      ).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    );
+    setPosts(posts.map((post) => 
+      post.id === updatedPost.id ? {
+        ...post,
+        ...updatedPost,
+        userReaction: updatedPost.userReaction,
+        reactionCounts: updatedPost.reactionCounts
+      } : post
+    ));
   };
 
   const handleLogout = () => {
