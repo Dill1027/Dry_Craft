@@ -49,6 +49,7 @@ module.exports = {
         shake: 'shake 0.5s ease-in-out',
         shimmer: 'shimmer 2s infinite linear',
         'fadeInUp': 'fadeInUp 0.5s ease-out forwards',
+        'pin-wiggle': 'pin-wiggle 1s ease-in-out',
       },
       keyframes: {
         fadeIn: {
@@ -98,6 +99,11 @@ module.exports = {
             transform: 'translateY(0)'
           },
         },
+        'pin-wiggle': {
+          '0%, 100%': { transform: 'rotate(0deg)' },
+          '25%': { transform: 'rotate(15deg)' },
+          '75%': { transform: 'rotate(-15deg)' },
+        },
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -120,6 +126,10 @@ module.exports = {
       scale: {
         '98': '.98',
         '102': '1.02',
+      },
+      rotate: {
+        '15': '15deg',
+        '-15': '-15deg',
       },
     },
   },
