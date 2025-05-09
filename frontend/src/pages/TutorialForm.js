@@ -20,11 +20,6 @@ function TutorialForm() {
   const [progress, setProgress] = useState(0);
   const [retrying, setRetrying] = useState(false);
   const [uploadData, setUploadData] = useState(null);
-  const [uploadProgress, setUploadProgress] = useState({
-    video: 0,
-    images: 0,
-    total: 0
-  });
 
   // Add craft types constant
   const craftTypes = [
@@ -86,11 +81,11 @@ function TutorialForm() {
       URL.revokeObjectURL(videoPreviewUrl);
     }
 
-    // Update size limit to 500MB (500 * 1024 * 1024 bytes)
-    if (file.size > 500 * 1024 * 1024) {
-      setError('Video must be less than 500MB');
-      return;
-    }
+   if (file.size > 500 * 1024 * 1024) {
+    setError('Video must be less than 500MB');
+    return;
+  }
+
 
     if (!['video/mp4', 'video/quicktime'].includes(file.type)) {
       setError('Only MP4 and QuickTime videos are supported');
@@ -136,34 +131,6 @@ function TutorialForm() {
     await submitTutorial();
   };
 
-  const uploadInChunks = async (file, chunkSize = 1024 * 1024) => {
-    const chunks = Math.ceil(file.size / chunkSize);
-    const uploadedChunks = [];
-
-    for (let i = 0; i < chunks; i++) {
-      const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
-      const formData = new FormData();
-      formData.append('chunk', chunk);
-      formData.append('index', i);
-      formData.append('total', chunks);
-      formData.append('filename', file.name);
-
-      try {
-        const response = await axiosInstance.post('/api/media/chunk', formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        uploadedChunks.push(response.data);
-      } catch (error) {
-        console.error('Chunk upload failed:', error);
-        throw new Error('File upload failed');
-      }
-    }
-
-    return uploadedChunks;
-  };
-
   const submitTutorial = async (isRetry = false) => {
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user) {
@@ -172,7 +139,7 @@ function TutorialForm() {
     }
 
     try {
-      if (!isRetry) {
+       if (!isRetry) {
         setLoading(true);
       } else {
         setRetrying(true); 
@@ -180,11 +147,13 @@ function TutorialForm() {
       setError('');
       setProgress(0);
 
+      
       const formDataToSend = new FormData();
       formDataToSend.append('userId', user.id);
       formDataToSend.append('title', formData.title.trim());
       formDataToSend.append('description', formData.description.trim());
       formDataToSend.append('craftType', formData.craftType);
+  
 
       // Store form data for retry
       if (!isRetry) {
@@ -207,50 +176,11 @@ function TutorialForm() {
         }
       }
 
-      // Handle video upload first if present
+      // Append processed media
+      processedImages.forEach(img => formDataToSend.append('images', img));
       if (video) {
-        try {
-          await uploadInChunks(video, (progress) => {
-            setUploadProgress(prev => ({
-              ...prev,
-              video: progress,
-              total: (progress + (prev.images || 0)) / 2
-            }));
-          });
-        } catch (error) {
-          setError('Video upload failed. Please try again.');
-          setLoading(false);
-          return;
-        }
+        formDataToSend.append('video', video);
       }
-
-      // Handle images
-      if (processedImages.length > 0) {
-        const imagePromises = processedImages.map(async (img, index) => {
-          await uploadInChunks(img, (progress) => {
-            setUploadProgress(prev => {
-              const imageProgress = prev.images || 0;
-              const newImageProgress = (imageProgress + (progress / processedImages.length));
-              return {
-                ...prev,
-                images: newImageProgress,
-                total: (newImageProgress + (prev.video || 0)) / 2
-              };
-            });
-          });
-        });
-
-        try {
-          await Promise.all(imagePromises);
-        } catch (error) {
-          setError('Image upload failed. Please try again.');
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Update the main progress bar based on total progress
-      setProgress(uploadProgress.total);
 
       // Add other data
       const filteredSteps = formData.steps.filter(step => step.trim());
@@ -284,7 +214,7 @@ function TutorialForm() {
       if (err.code === 'ECONNRESET' || err.code === 'ERR_NETWORK') {
         errorMsg = 'Connection lost. Click retry to attempt upload again.';
       } else if (err.code === 'ECONNABORTED') {
-        errorMsg = 'Upload timed out. Please try again with a smaller file or check your connection.';
+         errorMsg = 'Upload timed out. Please try again with a smaller file or check your connection.';
       } else {
         errorMsg = err.response?.data?.message || 'Failed to create tutorial';
       }
@@ -386,46 +316,10 @@ function TutorialForm() {
     </div>
   );
 
-  const renderProgress = () => (
-    <div className="mb-4">
-      {video && (
-        <div className="mb-2">
-          <span className="text-sm text-gray-600">Video: {uploadProgress.video.toFixed(1)}%</span>
-          <div className="h-2 bg-gray-200 rounded-full">
-            <div 
-              className="h-2 bg-indigo-600 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress.video}%` }}
-            />
-          </div>
-        </div>
-      )}
-      {images.length > 0 && (
-        <div className="mb-2">
-          <span className="text-sm text-gray-600">Images: {uploadProgress.images.toFixed(1)}%</span>
-          <div className="h-2 bg-gray-200 rounded-full">
-            <div 
-              className="h-2 bg-purple-600 rounded-full transition-all duration-300"
-              style={{ width: `${uploadProgress.images}%` }}
-            />
-          </div>
-        </div>
-      )}
-      <div>
-        <span className="text-sm text-gray-600">Total Progress: {uploadProgress.total.toFixed(1)}%</span>
-        <div className="h-2 bg-gray-200 rounded-full">
-          <div 
-            className="h-2 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full transition-all duration-300"
-            style={{ width: `${uploadProgress.total}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
       <div className="max-w-4xl mx-auto animate-fadeIn">
-        <button
+ <button
           onClick={() => navigate('/')}
           className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
                    transition-all duration-300 hover:gap-3"
@@ -443,8 +337,7 @@ function TutorialForm() {
             Create Tutorial
           </h2>
 
-          {error && renderError()}
-          {loading && renderProgress()}
+  {error && renderError()}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <div className="space-y-6">
@@ -666,7 +559,7 @@ function TutorialForm() {
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                       Video (Optional)
-                      <span className="text-xs text-gray-500 ml-2">Max 500MB, 30 sec</span>
+                      <span className="text-xs text-gray-500 ml-2">Max 50MB, 30 sec</span>
                     </label>
                     <input
                       type="file"
