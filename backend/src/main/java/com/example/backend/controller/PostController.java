@@ -228,7 +228,7 @@ public class PostController {
             return ResponseEntity.badRequest().build();
         }
     }
-
+    //delete all comments by post owner 
     @DeleteMapping("/posts/{postId}/comments/all")
     public ResponseEntity<PostResponse> deleteAllComments(
             @PathVariable String postId,
