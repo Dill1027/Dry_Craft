@@ -9,6 +9,7 @@ function Tutorials() {
   const [error, setError] = useState(null);
   const [selectedCraftType, setSelectedCraftType] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [pinnedTutorials, setPinnedTutorials] = useState([]);
   const navigate = useNavigate();
 
   const craftTypes = [
@@ -29,6 +30,14 @@ function Tutorials() {
     fetchTutorials();
   }, []);
 
+  useEffect(() => {
+    // Get pinned tutorial IDs from localStorage
+    const pinnedIds = JSON.parse(localStorage.getItem('pinnedTutorials') || '[]');
+    // Filter tutorials to get pinned ones
+    const pinned = tutorials.filter(tutorial => pinnedIds.includes(tutorial.id));
+    setPinnedTutorials(pinned);
+  }, [tutorials]);
+
   const fetchTutorials = async () => {
     try {
       const response = await axiosInstance.get('/api/tutorials');
@@ -47,6 +56,11 @@ function Tutorials() {
     (tutorial.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     tutorial.description?.toLowerCase().includes(searchQuery.toLowerCase()))
   ));
+
+  // Split tutorials into pinned and unpinned
+  const unpinnedTutorials = filteredTutorials.filter(
+    tutorial => !pinnedTutorials.find(pinned => pinned.id === tutorial.id)
+  );
 
   if (loading) {
     return (
@@ -160,8 +174,39 @@ function Tutorials() {
           </div>
         </div>
 
-        {/* Tutorial Grid */}
-        {filteredTutorials.length === 0 ? (
+        {/* Pinned Tutorials Section */}
+        {pinnedTutorials.length > 0 && (
+          <div className="mb-12">
+            <div className="flex items-center gap-2 mb-6">
+              <svg className="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+              </svg>
+              <h2 className="text-xl font-semibold text-gray-800">Pinned Tutorials</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-fadeIn">
+              {pinnedTutorials
+                .filter(tutorial => (
+                  (selectedCraftType === 'All' || 
+                  tutorial.craftType?.toLowerCase() === selectedCraftType.toLowerCase()) &&
+                  (tutorial.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  tutorial.description?.toLowerCase().includes(searchQuery.toLowerCase()))
+                ))
+                .map((tutorial, index) => (
+                  <div 
+                    key={tutorial.id} 
+                    className="transform hover:-translate-y-2 transition-all duration-300"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <TutorialCard tutorial={tutorial} isPinned={true} />
+                  </div>
+                ))
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Regular Tutorials Section */}
+        {unpinnedTutorials.length === 0 ? (
           <div className="text-center py-16 bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 
                         transform transition-all duration-500 hover:scale-[1.02]">
             <div className="mb-6 animate-bounce">
@@ -179,7 +224,7 @@ function Tutorials() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 animate-fadeIn">
-            {filteredTutorials.map((tutorial, index) => (
+            {unpinnedTutorials.map((tutorial, index) => (
               <div 
                 key={tutorial.id} 
                 className="transform hover:-translate-y-2 transition-all duration-300"

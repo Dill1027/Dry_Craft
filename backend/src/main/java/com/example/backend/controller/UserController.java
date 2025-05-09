@@ -77,6 +77,7 @@ public class UserController {
                 userMap.put("id", user.getId());
                 userMap.put("name", user.getFirstName() + " " + user.getLastName());
                 userMap.put("profilePicture", user.getProfilePicture());
+                userMap.put("bio", user.getBio()); // Add bio to response
                 return userMap;
             })
             .collect(Collectors.toList());
