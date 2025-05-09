@@ -337,8 +337,8 @@ public class PostService {
         String comment = post.getComments().get(commentIndex);
         String commentAuthorId = comment.split("\\|")[0];
 
-        // Allow if user is either the comment author or the post owner
-        return userId.equals(commentAuthorId) || userId.equals(post.getUserId());
+        // Only allow comment author to modify
+        return userId.equals(commentAuthorId);
     }
 
     public boolean isPostOwner(String postId, String userId) {
