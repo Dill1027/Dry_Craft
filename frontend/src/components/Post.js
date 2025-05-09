@@ -441,7 +441,7 @@ function Post({
     }
     return Object.values(reactionCounts).reduce((sum, count) => sum + (count || 0), 0);
   };
-
+  //hadle share button 
   const handleShare = async (type) => {
     try {
       const title = `Check out this post by ${post.userName}`;
