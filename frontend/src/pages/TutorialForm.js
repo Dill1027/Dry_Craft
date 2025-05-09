@@ -136,33 +136,32 @@ function TutorialForm() {
     await submitTutorial();
   };
 
-  const uploadInChunks = async (file, onProgress) => {
-    const chunkSize = 1024 * 1024 * 2; // 2MB chunks
+  const uploadInChunks = async (file, chunkSize = 1024 * 1024) => {
     const chunks = Math.ceil(file.size / chunkSize);
-    const formData = new FormData();
-    
+    const uploadedChunks = [];
+
     for (let i = 0; i < chunks; i++) {
-      const chunk = file.slice(
-        i * chunkSize,
-        Math.min(i * chunkSize + chunkSize, file.size)
-      );
-      formData.set('chunk', chunk);
-      formData.set('index', i);
-      formData.set('total', chunks);
-      
+      const chunk = file.slice(i * chunkSize, (i + 1) * chunkSize);
+      const formData = new FormData();
+      formData.append('chunk', chunk);
+      formData.append('index', i);
+      formData.append('total', chunks);
+      formData.append('filename', file.name);
+
       try {
-        await axiosInstance.post('/api/media/chunk', formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-          onUploadProgress: (e) => {
-            const chunkProgress = (e.loaded / e.total) * 100;
-            const totalProgress = ((i + (chunkProgress / 100)) / chunks) * 100;
-            onProgress(Math.round(totalProgress));
+        const response = await axiosInstance.post('/api/media/chunk', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
           }
         });
+        uploadedChunks.push(response.data);
       } catch (error) {
-        throw new Error(`Failed to upload chunk ${i + 1}/${chunks}`);
+        console.error('Chunk upload failed:', error);
+        throw new Error('File upload failed');
       }
     }
+
+    return uploadedChunks;
   };
 
   const submitTutorial = async (isRetry = false) => {
