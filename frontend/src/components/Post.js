@@ -426,7 +426,7 @@ function Post({
       }
     }
   };
-
+  //reaction emojis
   const getReactionEmoji = (type) => {
     switch (type) {
       case 'LIKE': return '👍';
