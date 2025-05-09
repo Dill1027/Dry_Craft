@@ -42,28 +42,6 @@
     @apply transition-opacity duration-300;
   }
 
-  /* Fix animation keyframes syntax */
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-
-  @keyframes pulse {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-    100% { transform: scale(1); }
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
-  }
-
-  @keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-
   /* Glass Morphism Effects */
   .glass {
     @apply bg-white/70 backdrop-blur-md border border-white/20 shadow-lg;
