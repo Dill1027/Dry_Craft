@@ -70,18 +70,10 @@ function Tutorials() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto animate-fadeIn">
-        <div className="flex justify-between items-center mb-12">
-          <div className="transform transition-all duration-500 hover:scale-[1.02]">
-            <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 tracking-tight">
-              Explore Tutorials
-            </h1>
-            <p className="mt-2 text-lg text-gray-600">
-              Discover creative DIY projects and get inspired
-            </p>
-          </div>
-
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+      {/* Header with glass effect */}
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/70 border-b border-white/20 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
             <select
               value={selectedCraftType}
@@ -90,43 +82,52 @@ function Tutorials() {
                        focus:border-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
             >
               {craftTypes.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
+                <option key={type} value={type}>{type}</option>
               ))}
             </select>
 
             <button
               onClick={() => navigate('/')}
-              className="group px-4 py-2 flex items-center gap-2 text-blue-600 hover:text-blue-800 
-                       transition-colors duration-200 rounded-lg hover:bg-white/50 backdrop-blur-sm"
+              className="group flex items-center gap-2 text-blue-600 hover:text-blue-800 
+                       transition-all duration-300 hover:gap-3"
             >
-              <svg 
-                className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-200" 
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300" 
+                   fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
               </svg>
               <span className="font-medium">Back to Home</span>
             </button>
+          </div>
 
-            <button
-              onClick={() => navigate('/my-tutorials')}
-              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg 
-                       hover:from-indigo-700 hover:to-blue-700 transform hover:-translate-y-0.5 
-                       transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2
-                       backdrop-blur-sm"
-            >
-              <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Manage Tutorials
-            </button>
+          <button
+            onClick={() => navigate('/my-tutorials')}
+            className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-blue-600 text-white rounded-lg 
+                     hover:from-indigo-700 hover:to-blue-700 transform hover:-translate-y-0.5 
+                     transition-all duration-200 shadow-lg hover:shadow-xl font-medium flex items-center gap-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Manage Tutorials
+          </button>
+        </div>
+      </header>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Title with gradient background */}
+        <div className="mb-12 relative">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-blue-200 to-indigo-200 rounded-2xl blur-3xl opacity-30"></div>
+          <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-8">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
+              Explore Tutorials
+            </h1>
+            <p className="mt-3 text-lg text-gray-600 max-w-2xl">
+              Discover creative DIY projects and get inspired by our community's tutorials
+            </p>
           </div>
         </div>
 
+        {/* Tutorial Grid */}
         {filteredTutorials.length === 0 ? (
           <div className="text-center py-16 bg-white/70 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 
                         transform transition-all duration-500 hover:scale-[1.02]">

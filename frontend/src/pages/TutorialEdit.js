@@ -210,30 +210,51 @@ function TutorialEdit() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-500"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 to-purple-100">
+        <div className="relative">
+          <div className="w-20 h-20 border-t-4 border-b-4 border-indigo-600 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-sm font-medium text-indigo-600">Loading</span>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <button
-          onClick={() => navigate('/my-tutorials')}
-          className="group mb-8 flex items-center gap-2 text-indigo-600 hover:text-indigo-800 transition-all duration-300"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span>Back to My Tutorials</span>
-        </button>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50">
+      {/* Header with glass effect */}
+      <header className="sticky top-0 z-30 backdrop-blur-md bg-white/70 border-b border-white/20 shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <button
+            onClick={() => navigate('/my-tutorials')}
+            className="group flex items-center gap-2 text-indigo-600 hover:text-indigo-800 
+                     transition-all duration-300 hover:gap-3"
+          >
+            <svg className="w-5 h-5 transform group-hover:-translate-x-1 transition-transform duration-300" 
+                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="font-medium">Back to My Tutorials</span>
+          </button>
+        </div>
+      </header>
 
-        <div className="bg-white/80 backdrop-blur-lg rounded-2xl shadow-xl p-8 border border-white/50">
-          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600 mb-8">
-            Edit Tutorial
-          </h2>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Title with gradient background */}
+        <div className="mb-12 relative">
+          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-indigo-200 to-purple-200 rounded-2xl blur-3xl opacity-30"></div>
+          <div className="relative z-10 bg-white/60 backdrop-blur-sm rounded-2xl shadow-xl border border-white/50 p-8">
+            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-700">
+              Edit Tutorial
+            </h1>
+            <p className="mt-3 text-lg text-gray-600 max-w-2xl">
+              Update your tutorial content and media to share your knowledge with the world.
+            </p>
+          </div>
+        </div>
 
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/50 p-8 animate-fadeIn">
           {error && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-lg">
               <p className="text-red-700">{error}</p>
@@ -461,6 +482,37 @@ function TutorialEdit() {
           </form>
         </div>
       </div>
+
+      {/* Add CSS for animations */}
+      <style jsx>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+
+        .animate-fadeInUp {
+          animation: fadeInUp 0.5s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 }
