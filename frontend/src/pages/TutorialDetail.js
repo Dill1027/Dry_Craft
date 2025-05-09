@@ -315,6 +315,35 @@ function TutorialDetail() {
                   <p className="text-green-500">You've completed this tutorial!</p>
                 </div>
               )}
+              
+              {/* Add Image Gallery Section */}
+              {tutorial.imageUrls && tutorial.imageUrls.length > 0 && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <h2 className="text-xl font-semibold text-transparent bg-clip-text bg-gradient-to-r 
+                               from-indigo-600 to-purple-600 mb-4">Tutorial Images</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {tutorial.imageUrls.map((imageUrl, index) => (
+                      <div key={index} className="relative aspect-video group">
+                        <img
+                          src={imageUrl}
+                          alt={`Tutorial step ${index + 1}`}
+                          className="w-full h-full object-cover rounded-lg shadow-md transition-transform 
+                                   duration-300 group-hover:scale-[1.02]"
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = '/images/placeholder.png';
+                          }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent 
+                                      opacity-0 group-hover:opacity-100 transition-opacity duration-300 
+                                      rounded-lg flex items-end p-4">
+                          <span className="text-white text-sm">Image {index + 1}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
