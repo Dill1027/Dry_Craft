@@ -36,80 +36,66 @@ module.exports = {
         'glow': '0 0 15px rgba(0, 115, 255, 0.3)',
       },
       animation: {
-        'fade-in': 'fadeIn 0.5s ease-in-out',
-        'slide-in': 'slideIn 0.5s ease-out',
-        'bounce-slow': 'bounce 2s infinite',
-        'pulse-slow': 'pulse 3s infinite',
+        'spin': 'spin 1s linear infinite',
+        'pulse': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'bounce': 'bounce 1s infinite',
         'float': 'float 3s ease-in-out infinite',
-        'shimmer': 'shimmer 2.5s infinite',
+        'shimmer': 'shimmer 2s infinite linear',
+        'fade-in': 'fadeIn 0.5s ease-in-out',
+        'fade-out': 'fadeOut 0.5s ease-in-out',
+        'slide-in': 'slideIn 0.5s ease-out',
         'slide-up': 'slideUp 0.5s ease-out',
         'scale': 'scale 0.3s ease-in-out',
-        'fade': 'fade 0.3s ease-in-out',
-        fadeIn: 'fadeIn 0.5s ease-out forwards',
-        shake: 'shake 0.5s ease-in-out',
-        shimmer: 'shimmer 2s infinite linear',
-        'fadeInUp': 'fadeInUp 0.5s ease-out forwards',
-        'slide-in-right': 'slideInRight 0.3s ease-out',
-        'slide-out-right': 'slideOutRight 0.3s ease-out',
-        'pin-wiggle': 'pin-wiggle 1s ease-in-out',
+        'shake': 'shake 0.5s ease-in-out',
+        'pin-wiggle': 'pinWiggle 1s ease-in-out',
       },
       keyframes: {
-        fadeIn: {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
+        spin: {
+          '0%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(360deg)' },
         },
-        slideIn: {
-          '0%': { transform: 'translateY(-10px)', opacity: '0' },
-          '100%': { transform: 'translateY(0)', opacity: '1' },
+        pulse: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.05)' },
+        },
+        bounce: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-20px)' },
         },
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-10px)' },
         },
         shimmer: {
-          '0%': { backgroundPosition: '-1000px 0' },
-          '100%': { backgroundPosition: '1000px 0' },
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(100%)' },
+        },
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        fadeOut: {
+          '0%': { opacity: '1' },
+          '100%': { opacity: '0' },
+        },
+        slideIn: {
+          '0%': { transform: 'translateY(-10px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         slideUp: {
-          '0%': { transform: 'translateY(20px)', opacity: 0 },
-          '100%': { transform: 'translateY(0)', opacity: 1 },
+          '0%': { transform: 'translateY(20px)', opacity: '0' },
+          '100%': { transform: 'translateY(0)', opacity: '1' },
         },
         scale: {
           '0%': { transform: 'scale(0.95)' },
           '100%': { transform: 'scale(1)' },
-        },
-        fade: {
-          '0%': { opacity: 0 },
-          '100%': { opacity: 1 },
         },
         shake: {
           '0%, 100%': { transform: 'translateX(0)' },
           '25%': { transform: 'translateX(-5px)' },
           '75%': { transform: 'translateX(5px)' },
         },
-        shimmer: {
-          '0%': { transform: 'translateX(-100%)' },
-          '100%': { transform: 'translateX(100%)' },
-        },
-        fadeInUp: {
-          '0%': { 
-            opacity: '0',
-            transform: 'translateY(20px)'
-          },
-          '100%': {
-            opacity: '1',
-            transform: 'translateY(0)'
-          },
-        },
-        slideInRight: {
-          '0%': { transform: 'translateX(100%)', opacity: 0 },
-          '100%': { transform: 'translateX(0)', opacity: 1 },
-        },
-        slideOutRight: {
-          '0%': { transform: 'translateX(0)', opacity: 1 },
-          '100%': { transform: 'translateX(100%)', opacity: 0 },
-        },
-        'pin-wiggle': {
+        pinWiggle: {
           '0%, 100%': { transform: 'rotate(0deg)' },
           '25%': { transform: 'rotate(15deg)' },
           '75%': { transform: 'rotate(-15deg)' },
