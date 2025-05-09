@@ -53,7 +53,6 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => {
     if (response.config.responseType === 'blob') {
-      // Don't transform blob responses
       return response;
     }
     return response;
@@ -61,6 +60,25 @@ axiosInstance.interceptors.response.use(
   (error) => {
     let errorMessage = error.message || "An error occurred";
     
+    // Handle CORS errors
+    if (error.message?.includes('Network Error') || error.code === 'ERR_NETWORK') {
+      console.warn('CORS or Network Error:', error);
+      // For aitopia.ai requests, try with no-cors mode
+      if (error.config?.url?.includes('aitopia.ai')) {
+        return fetch(error.config.url, {
+          method: error.config.method,
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: error.config.data
+        }).catch(err => {
+          console.error('Fallback request failed:', err);
+          throw err;
+        });
+      }
+    }
+
     if (error.response) {
       // Server responded with error status
       errorMessage = error.response.data?.message || errorMessage;
