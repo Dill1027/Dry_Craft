@@ -78,16 +78,6 @@ function Tutorials() {
       <header className="sticky top-0 z-30 backdrop-blur-md bg-white/70 border-b border-white/20 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <select
-              value={selectedCraftType}
-              onChange={(e) => setSelectedCraftType(e.target.value)}
-              className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 
-                       focus:border-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
-            >
-              {craftTypes.map((type) => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
 
             <button
               onClick={() => navigate('/')}
@@ -103,6 +93,19 @@ function Tutorials() {
           </div>
 
           <div className="flex items-center gap-4">
+
+          <select
+              value={selectedCraftType}
+              onChange={(e) => setSelectedCraftType(e.target.value)}
+              className="px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 
+                       focus:border-blue-500 bg-white/50 backdrop-blur-sm transition-all duration-200"
+            >
+              {craftTypes.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+
+
             <div className="relative">
               <input
                 type="text"
