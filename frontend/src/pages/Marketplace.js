@@ -60,7 +60,7 @@ function Marketplace() {
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
   const navigate = useNavigate();
 
-  const defaultProductImage = '/images/placeholder-image.jpg';
+  const defaultProductImage = '/images/placeholder-product.png';
 
   useEffect(() => {
     fetchProducts();
@@ -88,8 +88,12 @@ function Marketplace() {
   };
 
   const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         product.description.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!product) return false;
+    
+    const matchesSearch = searchQuery.toLowerCase().trim() === '' || 
+      (product.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+       product.description?.toLowerCase().includes(searchQuery.toLowerCase()));
+
     const matchesCategory = !selectedCategory || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });

@@ -262,10 +262,16 @@ function Post({
     if (!newComment.trim()) return;
     
     try {
-      const response = await axiosInstance.post(`/api/posts/${post.id}/comments`, {
-        userId: user.id,
-        content: newComment.trim()
-      });
+      const response = await axiosInstance.post(
+        `/api/posts/${post.id}/comments`,
+        null,
+        {
+          params: {
+            userId: user.id,
+            content: newComment.trim()
+          }
+        }
+      );
       setComments(response.data.comments);
       setNewComment("");
       Swal.fire({
@@ -301,33 +307,26 @@ function Post({
     if (!editCommentContent.trim()) return;
     
     try {
-      const response = await axiosInstance.put(`/api/posts/${post.id}/comments/${index}`, {
-        userId: user.id,
-        content: editCommentContent.trim()
-      });
+      const formData = new FormData();
+      formData.append('userId', user.id);
+      formData.append('content', editCommentContent.trim());
+
+      const response = await axiosInstance.put(
+        `/api/posts/${post.id}/comments/${index}`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
       setComments(response.data.comments);
       setEditingCommentIndex(null);
       setEditCommentContent('');
-      Swal.fire({
-        title: 'Success!',
-        text: 'Comment updated successfully',
-        icon: 'success',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000
-      });
     } catch (error) {
       console.error('Error updating comment:', error);
-      Swal.fire({
-        title: 'Error!',
-        text: 'Failed to update comment',
-        icon: 'error',
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000
-      });
+      setError("Failed to update comment");
+      setTimeout(() => setError(null), 3000);
     }
   };
 

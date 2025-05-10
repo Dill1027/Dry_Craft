@@ -18,6 +18,12 @@ import UserVideos from "./pages/UserVideos";
 import ProductDetail from './pages/ProductDetail';
 import Messages from "./pages/Messages";
 import UserProfileView from './components/UserProfileView';
+import { getPlaceholderImage } from './utils/mediaUtils';
+
+const handleImageError = (e, type = 'default') => {
+  e.target.onerror = null; // Prevent infinite loop
+  e.target.src = getPlaceholderImage(type);
+};
 
 function App() {
   return (

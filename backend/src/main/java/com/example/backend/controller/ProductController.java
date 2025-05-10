@@ -67,7 +67,7 @@ public class ProductController {
             @RequestParam("stock") int stock,
             @RequestParam("category") String category,
             @RequestParam("subCategory") String subCategory,
-            @RequestParam("colors") String colors,
+            @RequestParam(value = "colors", required = false) List<String> colors,
             @RequestParam("sellerId") String sellerId,
             @RequestParam(value = "images", required = false) List<MultipartFile> images
     ) {
@@ -95,7 +95,7 @@ public class ProductController {
             product.setStock(stock);
             product.setCategory(category);
             product.setSubCategory(subCategory);
-            product.setColors(Arrays.asList(colors.split(",")));
+            product.setColors(colors != null ? colors : new ArrayList<>());
             product.setSellerId(sellerId);
             product.setImageUrls(imageUrls);
 

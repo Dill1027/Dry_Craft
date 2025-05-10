@@ -1,7 +1,17 @@
 import axiosInstance from './axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8081';
-const PLACEHOLDER_IMAGE = `${API_BASE_URL}/images/placeholder-image.png`;
+const PLACEHOLDER_IMAGES = {
+  default: '/images/placeholder-image.png',
+  product: '/images/placeholder-product.png',
+  profile: '/images/placeholder-avatar.png',
+  post: '/images/placeholder-post.png'
+};
+
+const getPlaceholderImage = (type = 'default') => {
+  return PLACEHOLDER_IMAGES[type] || PLACEHOLDER_IMAGES.default;
+};
+
 const MAX_RETRIES = 5; // Increased from 3
 const INITIAL_TIMEOUT = 60000; // Increased to 60 seconds
 const RETRY_DELAY = 2000; // Increased from 1000
@@ -34,7 +44,7 @@ const getMediaUrl = async (mediaId, originalUrl, options = {}) => {
   } catch (error) {
     if (error.name === 'CanceledError' || error.name === 'AbortError') {
       console.warn(`Media load canceled for ${mediaId}`);
-      return originalUrl ? getFullUrl(originalUrl) : PLACEHOLDER_IMAGE;
+      return originalUrl ? getFullUrl(originalUrl) : getPlaceholderImage();
     }
 
     const isTimeout = error.code === 'ECONNABORTED' || error.message.includes('timeout');
@@ -59,18 +69,18 @@ const getMediaUrl = async (mediaId, originalUrl, options = {}) => {
       });
     }
 
-    return originalUrl ? getFullUrl(originalUrl) : PLACEHOLDER_IMAGE;
+    return originalUrl ? getFullUrl(originalUrl) : getPlaceholderImage();
   }
 };
 
 const handleImageError = (url) => {
   console.warn(`Image failed to load: ${url}`);
-  return PLACEHOLDER_IMAGE;
+  return getPlaceholderImage();
 };
 
 const getFullUrl = (url) => {
-  if (!url) return PLACEHOLDER_IMAGE;
+  if (!url) return getPlaceholderImage();
   return url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
 };
 
-export { getMediaUrl, handleImageError, getFullUrl };
+export { getMediaUrl, handleImageError, getFullUrl, getPlaceholderImage };
