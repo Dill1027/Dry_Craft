@@ -262,16 +262,10 @@ function Post({
     if (!newComment.trim()) return;
     
     try {
-      const response = await axiosInstance.post(
-        `/api/posts/${post.id}/comments`,
-        null,
-        {
-          params: {
-            userId: user.id,
-            content: newComment.trim()
-          }
-        }
-      );
+      const response = await axiosInstance.post(`/api/posts/${post.id}/comments`, {
+        userId: user.id,
+        content: newComment.trim()
+      });
       setComments(response.data.comments);
       setNewComment("");
       Swal.fire({
@@ -307,16 +301,10 @@ function Post({
     if (!editCommentContent.trim()) return;
     
     try {
-      const response = await axiosInstance.put(
-        `/api/posts/${post.id}/comments/${index}`,
-        null,
-        {
-          params: {
-            userId: user.id,
-            content: editCommentContent.trim()
-          }
-        }
-      );
+      const response = await axiosInstance.put(`/api/posts/${post.id}/comments/${index}`, {
+        userId: user.id,
+        content: editCommentContent.trim()
+      });
       setComments(response.data.comments);
       setEditingCommentIndex(null);
       setEditCommentContent('');

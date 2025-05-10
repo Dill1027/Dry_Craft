@@ -85,6 +85,12 @@ function Home() {
               profile.id !== user?.id && 
               !followedUsers.has(profile.id)
             )
+            .map(profile => ({
+              ...profile,
+              firstName: profile.name?.split(' ')[0] || '',
+              lastName: profile.name?.split(' ')[1] || '',
+              bio: profile.bio || 'No bio available'
+            }))
             .slice(0, 5)
         );
       } else {
@@ -353,7 +359,7 @@ function Home() {
             </div>
             <div>
               <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
-                {user?.firstName || 'User'}
+                {user ? `${user.firstName} ${user.lastName}` : 'User'}
               </h2>
               <p className="text-sm text-gray-500">Welcome back! 👋</p>
             </div>
@@ -470,7 +476,7 @@ function Home() {
               {suggestedProfiles.map((profile) => (
                 <div 
                   key={profile.id} 
-                  className="flex-shrink-0 w-40 text-center transition-transform duration-300 hover:scale-105"
+                  className="flex-shrink-0 w-48 text-center transition-transform duration-300 hover:scale-105"
                 >
                   <div 
                     className="group relative cursor-pointer"
@@ -499,9 +505,11 @@ function Home() {
                       <div className="absolute -inset-1 bg-gradient-to-r from-purple-400 to-blue-500 rounded-full opacity-0 group-hover:opacity-20 blur-md transition-opacity duration-300 -z-10"></div>
                     </div>
                     <h4 className="font-medium text-gray-800 truncate group-hover:text-purple-600 transition-colors">
-                      {profile.firstName} {profile.lastName}
+                      {profile.name}
                     </h4>
-                    <p className="text-sm text-gray-500 truncate mb-2">{profile.bio}</p>
+                    <p className="text-sm text-gray-500 truncate mb-2 px-2">
+                      {profile.bio}
+                    </p>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
