@@ -1,8 +1,7 @@
 [build]
-  publish = "dist"
-  command = "npm run build"
+  base = "frontend"
+  publish = "build"
+  command = "CI=false npm run build"
 
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[build.environment]
+  SKIP_PREFLIGHT_CHECK = "true"
