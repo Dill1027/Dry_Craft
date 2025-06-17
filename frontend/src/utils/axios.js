@@ -1,21 +1,23 @@
 import axios from "axios";
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8081";
+const isProduction = API_BASE_URL.includes('azurewebsites.net');
+
 const axiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:8081",
-  withCredentials: true,
+  baseURL: API_BASE_URL,
+  withCredentials: true, // Keep for dev, but note this may need adjustment for Azure
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: 60000, // Increased to 1 minute for general requests
+  timeout: isProduction ? 120000 : 60000, // Increased timeout for Azure
 });
 
 // Add helper function to get full URL
 axiosInstance.getFullUrl = (url) => {
   if (!url) return "";
   if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  const baseUrl = process.env.REACT_APP_API_URL || "http://localhost:8081";
-  return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
+  return `${API_BASE_URL}${url.startsWith('/') ? url : `/${url}`}`;
 };
 
 // Update request interceptor
@@ -63,6 +65,17 @@ axiosInstance.interceptors.response.use(
     // Handle CORS errors
     if (error.message?.includes('Network Error') || error.code === 'ERR_NETWORK') {
       console.warn('CORS or Network Error:', error);
+      
+      // Special handling for Azure environment
+      if (isProduction) {
+        console.error('Azure connection error. Please check if the service is running:', error);
+        // Attempt retry for Azure connectivity issues
+        if (error.config && !error.config.__isRetryRequest) {
+          error.config.__isRetryRequest = true;
+          return new Promise(resolve => setTimeout(() => resolve(axiosInstance(error.config)), 3000));
+        }
+      }
+      
       // For aitopia.ai requests, try with no-cors mode
       if (error.config?.url?.includes('aitopia.ai')) {
         return fetch(error.config.url, {
@@ -106,7 +119,7 @@ axiosInstance.revokeObjectURL = (url) => {
 // Simplified upload method with chunking and retry logic
 axiosInstance.uploadMedia = async (url, formData, options = {}) => {
   const method = options.method || 'POST';
-  const maxRetries = options.retries || 3;
+  const maxRetries = isProduction ? 5 : (options.retries || 3); // More retries in production
   let attempt = 0;
 
   const upload = async () => {
@@ -115,7 +128,7 @@ axiosInstance.uploadMedia = async (url, formData, options = {}) => {
         url,
         method,
         data: formData,
-        timeout: options.timeout || 300000,
+        timeout: isProduction ? 600000 : (options.timeout || 300000), // 10 min timeout for Azure
         maxBodyLength: Infinity,
         maxContentLength: Infinity,
         headers: {
@@ -137,11 +150,16 @@ axiosInstance.uploadMedia = async (url, formData, options = {}) => {
       if (attempt < maxRetries && (
         error.code === 'ECONNRESET' || 
         error.code === 'ERR_NETWORK' ||
-        error.response?.status === 415
+        error.response?.status === 415 ||
+        error.message?.includes('timeout')
       )) {
         attempt++;
         console.log(`Upload retry attempt ${attempt} of ${maxRetries}`);
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        // Exponential backoff with longer waits for Azure
+        const backoffTime = isProduction ? 
+          Math.pow(2, attempt) * 2000 : 
+          Math.pow(2, attempt) * 1000;
+        await new Promise(resolve => setTimeout(resolve, backoffTime));
         return upload();
       }
       throw error;
@@ -209,6 +227,27 @@ axiosInstance.uploadProfilePicture = async (userId, imageFile) => {
       'Content-Type': 'multipart/form-data'
     }
   });
+};
+
+// Add new method specifically for Azure blob access
+axiosInstance.getAzureMedia = async (mediaId) => {
+  try {
+    const response = await axiosInstance({
+      url: `/api/media/${mediaId}`,
+      method: 'GET',
+      responseType: 'blob',
+      timeout: 60000,
+      headers: {
+        'Accept': '*/*',
+        'Cache-Control': 'no-cache',
+      }
+    });
+    
+    return URL.createObjectURL(response.data);
+  } catch (error) {
+    console.error('Failed to fetch Azure media:', error);
+    throw error;
+  }
 };
 
 export default axiosInstance;

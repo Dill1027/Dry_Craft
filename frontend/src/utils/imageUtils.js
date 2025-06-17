@@ -1,4 +1,5 @@
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8081';
+const MEDIA_URL = process.env.REACT_APP_MEDIA_URL || `${API_BASE_URL}/api/media`;
 
 export const getImageUrl = (url) => {
     if (!url) return '/images/placeholder.jpg';
@@ -11,7 +12,12 @@ export const getImageUrl = (url) => {
         
         // If URL is a relative path starting with /api/
         if (url.startsWith('/api/')) {
-            return `${process.env.REACT_APP_API_URL || 'http://localhost:8081'}${url}`;
+            return `${API_BASE_URL}${url}`;
+        }
+        
+        // If URL is a media ID (for Azure storage)
+        if (url.match(/^[0-9a-fA-F]{24}$/)) {
+            return `${MEDIA_URL}/${url}`;
         }
         
         // For relative paths not starting with /api/
@@ -26,4 +32,9 @@ export const handleImageError = (url, fallbackUrl = '/images/placeholder.jpg') =
     // Log error for debugging
     console.warn('Image failed to load:', url);
     return fallbackUrl;
+};
+
+// Add function to determine if we're running in Azure production environment
+export const isAzureEnvironment = () => {
+    return process.env.REACT_APP_API_URL?.includes('azurewebsites.net') || false;
 };

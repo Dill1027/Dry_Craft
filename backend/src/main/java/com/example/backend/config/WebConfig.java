@@ -40,7 +40,9 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(
                     "http://localhost:3000",
                     "http://localhost:3001",
-                    "https://extensions.aitopia.ai"
+                    "https://extensions.aitopia.ai",
+                    "https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net",
+                    "https://drycraft.netlify.app"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")

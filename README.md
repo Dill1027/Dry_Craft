@@ -82,17 +82,30 @@ npm start
 
 Frontend (.env):
 ```plaintext
+# Development environment
 REACT_APP_API_URL=http://localhost:8081
 REACT_APP_MEDIA_URL=http://localhost:8081/api/media
 REACT_APP_MAX_FILE_SIZE=15728640
+
+# Production environment (Azure)
+# These are automatically set in netlify.toml for frontend deployment
+# REACT_APP_API_URL=https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net
+# REACT_APP_MEDIA_URL=https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net/api/media
 ```
 
 Backend (application.properties):
 ```plaintext
+# Development environment
 spring.data.mongodb.uri=mongodb://localhost:27017/drycraft
 spring.servlet.multipart.max-file-size=15MB
 jwt.secret=your_jwt_secret_key
 upload.directory=/path/to/uploads
+
+# Production environment (Azure)
+# spring.data.mongodb.uri=${MONGODB_CONNECTION_STRING}
+# spring.servlet.multipart.max-file-size=15MB
+# jwt.secret=${JWT_SECRET}
+# upload.directory=${UPLOAD_DIR}
 ```
 
 ## 🧪 Testing
@@ -113,6 +126,16 @@ mvn verify            # Run integration tests
 ```
 
 ## 📦 Deployment
+
+### Azure Deployment
+The application is deployed at:
+- Backend API: https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net
+- Frontend: Hosted on Netlify (linked to the Azure backend)
+
+To deploy updates:
+1. Push changes to the main branch, which will trigger the GitHub Actions workflow
+2. The workflow will build and deploy the backend to Azure
+3. Frontend will be automatically deployed through Netlify
 
 ### Docker Deployment
 ```bash
@@ -144,8 +167,8 @@ java -jar target/drycraft-0.0.1-SNAPSHOT.jar
 ## 📚 API Documentation
 
 Access the API documentation at:
-- Swagger UI: `http://localhost:8081/swagger-ui.html`
-- OpenAPI Spec: `http://localhost:8081/v3/api-docs`
+- Swagger UI: `https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net/swagger-ui.html`
+- OpenAPI Spec: `https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net/v3/api-docs`
 
 ## 🤝 Contributing
 
