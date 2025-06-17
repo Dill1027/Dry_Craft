@@ -1,4 +1,5 @@
 [build]
+<<<<<<< HEAD
   base = "frontend"
   publish = "build"
   command = "npm run build"
@@ -12,3 +13,12 @@
   from = "/*"
   to = "/index.html"
   status = 200
+=======
+  publish = "dist"
+  command = "npm run build"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+>>>>>>> parent of 07bd1c0 (nn)
