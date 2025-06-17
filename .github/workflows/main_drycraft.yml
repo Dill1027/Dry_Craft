@@ -11,7 +11,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     permissions:
       contents: read #This is required for actions/checkout
 
@@ -22,21 +22,19 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: '17'
-          distribution: 'temurin'
-          cache: 'maven'
+          distribution: 'microsoft'
 
       - name: Build with Maven
-        run: mvn clean package -DskipTests -Pprod
-        working-directory: backend
+        run: mvn clean install
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: java-app
-          path: backend/target/*.jar
+          path: '${{ github.workspace }}/target/*.jar'
 
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     needs: build
     environment:
       name: 'Production'
@@ -54,16 +52,15 @@ jobs:
       - name: Login to Azure
         uses: azure/login@v2
         with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_4BBAB3779719410EBA1B2B383CE1273B }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_18A5838412E847159D12E0F30ABEB24D }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_780CAE41E3474B8C86A37D8F409E7CBB }}
+          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_CCCD5FAF666744E086D080A7F7A80836 }}
+          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_A3617072DFB74CECA4883A581A0778C6 }}
+          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_9B1607AAAF204561BB5C462AA4DDA67D }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
         uses: azure/webapps-deploy@v3
         with:
-          app-name: 'drycraft-gmecd2bjbxgeahfu'
+          app-name: 'DryCraft'
           slot-name: 'Production'
           package: '*.jar'
-          startup-command: 'java -jar *.jar --spring.profiles.active=prod'
-
+          
