@@ -43,7 +43,7 @@ public class WebConfig implements WebMvcConfigurer {
                     "https://extensions.aitopia.ai",
                     "https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net",
                     "https://drycraft.netlify.app",
-                    "https://dry-craft-qt3g.vercel.app"
+                    "https://dry-craft-qt3g.vercel.app/login"
                 )
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
