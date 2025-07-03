@@ -1,0 +1,35 @@
+export default function handler(req, res) {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
+    }
+
+    // Handle login endpoint
+    if (req.method === 'POST') {
+        const { username, password } = req.body || {};
+        
+        // Mock authentication - in production, you'd validate against your database
+        if (username && password) {
+            res.status(200).json({
+                token: 'mock-jwt-token-' + Date.now(),
+                user: {
+                    id: 1,
+                    username: username,
+                    email: username + '@example.com'
+                }
+            });
+        } else {
+            res.status(400).json({ error: 'Username and password are required' });
+        }
+    } else if (req.method === 'GET') {
+        res.status(200).json({ message: 'Auth endpoint is working' });
+    } else {
+        res.status(405).json({ error: 'Method not allowed' });
+    }
+}
