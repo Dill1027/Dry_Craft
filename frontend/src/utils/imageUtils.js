@@ -34,7 +34,7 @@ export const handleImageError = (url, fallbackUrl = '/images/placeholder.jpg') =
     return fallbackUrl;
 };
 
-// Add function to determine if we're running in Azure production environment
-export const isAzureEnvironment = () => {
-    return process.env.REACT_APP_API_URL?.includes('azurewebsites.net') || false;
+// Add function to determine if we're running in production environment
+export const isProductionEnvironment = () => {
+    return process.env.REACT_APP_API_URL?.includes('vercel.app') || false;
 };
