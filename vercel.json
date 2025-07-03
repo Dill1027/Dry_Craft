@@ -7,53 +7,9 @@
       "config": {
         "distDir": "build"
       }
-    },
-    {
-      "src": "api/*.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/**/*.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
-    {
-      "src": "/api/health",
-      "dest": "/api/health.js"
-    },
-    {
-      "src": "/api/posts",
-      "dest": "/api/posts.js"
-    },
-    {
-      "src": "/api/users",
-      "dest": "/api/users.js"
-    },
-    {
-      "src": "/api/orders",
-      "dest": "/api/orders.js"
-    },
-    {
-      "src": "/api/auth",
-      "dest": "/api/auth.js"
-    },
-    {
-      "src": "/api/auth/register",
-      "dest": "/api/auth-register.js"
-    },
-    {
-      "src": "/api/users/suggestions",
-      "dest": "/api/users-suggestions.js"
-    },
-    {
-      "src": "/api/suggestions",
-      "dest": "/api/suggestions.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1.js"
-    },
     {
       "src": "/(.*)",
       "dest": "/frontend/$1"
