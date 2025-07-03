@@ -31,21 +31,14 @@ module.exports = async (req, res) => {
         const db = await connectToDatabase();
         
         if (req.method === 'GET') {
-            // Get all users
-            const users = await db.collection('users').find({}).project({ password: 0 }).toArray();
+            // Get suggested user profiles
+            const users = await db.collection('users')
+                .find({})
+                .project({ password: 0 })
+                .limit(10)
+                .toArray();
+            
             res.status(200).json(users);
-        } else if (req.method === 'POST') {
-            // Create new user
-            const user = req.body;
-            
-            // Check if user already exists
-            const existingUser = await db.collection('users').findOne({ username: user.username });
-            if (existingUser) {
-                return res.status(400).json({ error: 'Username already exists' });
-            }
-            
-            const result = await db.collection('users').insertOne(user);
-            res.status(201).json({ id: result.insertedId, ...user, password: undefined });
         } else {
             res.status(405).json({ error: 'Method not allowed' });
         }

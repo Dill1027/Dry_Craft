@@ -33,38 +33,51 @@ module.exports = async (req, res) => {
     }
 
     try {
-        const { username, password } = req.body;
+        const { username, email, password } = req.body;
         
-        if (!username || !password) {
-            return res.status(400).json({ error: 'Username and password are required' });
+        if (!username || !email || !password) {
+            return res.status(400).json({ error: 'Username, email, and password are required' });
         }
 
         const db = await connectToDatabase();
         
-        // Find user (you should hash passwords in production)
-        const user = await db.collection('users').findOne({ username });
+        // Check if user already exists
+        const existingUser = await db.collection('users').findOne({ 
+            $or: [{ username }, { email }] 
+        });
         
-        if (!user || user.password !== password) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+        if (existingUser) {
+            return res.status(400).json({ error: 'Username or email already exists' });
         }
+
+        // Create new user
+        const newUser = {
+            username,
+            email,
+            password, // In production, you should hash this password
+            createdAt: new Date(),
+            updatedAt: new Date()
+        };
+        
+        const result = await db.collection('users').insertOne(newUser);
 
         // Generate JWT token
         const token = jwt.sign(
-            { userId: user._id, username: user.username },
+            { userId: result.insertedId, username, email },
             process.env.JWT_SECRET || 'default-secret',
             { expiresIn: '24h' }
         );
 
-        res.status(200).json({
+        res.status(201).json({
             token,
             user: {
-                id: user._id,
-                username: user.username,
-                email: user.email
+                id: result.insertedId,
+                username,
+                email
             }
         });
     } catch (error) {
-        console.error('Auth error:', error);
+        console.error('Registration error:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };

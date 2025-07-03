@@ -31,21 +31,19 @@ module.exports = async (req, res) => {
         const db = await connectToDatabase();
         
         if (req.method === 'GET') {
-            // Get all users
-            const users = await db.collection('users').find({}).project({ password: 0 }).toArray();
-            res.status(200).json(users);
+            // Get all posts
+            const posts = await db.collection('posts').find({}).sort({ createdAt: -1 }).toArray();
+            res.status(200).json(posts);
         } else if (req.method === 'POST') {
-            // Create new user
-            const user = req.body;
+            // Create new post
+            const post = {
+                ...req.body,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            };
             
-            // Check if user already exists
-            const existingUser = await db.collection('users').findOne({ username: user.username });
-            if (existingUser) {
-                return res.status(400).json({ error: 'Username already exists' });
-            }
-            
-            const result = await db.collection('users').insertOne(user);
-            res.status(201).json({ id: result.insertedId, ...user, password: undefined });
+            const result = await db.collection('posts').insertOne(post);
+            res.status(201).json({ id: result.insertedId, ...post });
         } else {
             res.status(405).json({ error: 'Method not allowed' });
         }
