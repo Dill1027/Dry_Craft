@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "backend/pom.xml",
+      "use": "@vercel/java",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/$1"
+    }
+  ],
+  "functions": {
+    "backend/src/main/java/com/example/backend/BackendApplication.java": {
+      "runtime": "java17"
+    }
+  },
+  "env": {
+    "SPRING_PROFILES_ACTIVE": "prod",
+    "MONGODB_URI": "@mongodb_uri",
+    "JWT_SECRET": "@jwt_secret",
+    "CORS_ALLOWED_ORIGINS": "https://your-frontend-url.vercel.app"
+  }
+}

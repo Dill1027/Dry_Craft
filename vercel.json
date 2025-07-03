@@ -7,12 +7,20 @@
       "config": {
         "distDir": "build"
       }
+    },
+    {
+      "src": "backend/pom.xml",
+      "use": "@vercel/java"
     }
   ],
   "routes": [
     {
+      "src": "/api/(.*)",
+      "dest": "/backend/$1"
+    },
+    {
       "src": "/(.*)",
-      "dest": "/frontend/index.html"
+      "dest": "/frontend/$1"
     }
   ]
 }
