@@ -1,0 +1,15 @@
+backend/
+node_modules/
+*.log
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+src/
+target/
+*.jar
+.mvn/
+mvnw
+mvnw.cmd
+pom.xml
+HELP.md
