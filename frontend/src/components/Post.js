@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import PropTypes from 'prop-types';
 import Swal from 'sweetalert2';
 import axiosInstance from "../utils/axios";
@@ -34,8 +34,6 @@ function Post({
   const [reactionCounts, setReactionCounts] = useState(() => {
     return post?.reactionCounts || {};
   });
-  const [showReactionMenu, setShowReactionMenu] = useState(false);
-  const [isHoveringReaction, setIsHoveringReaction] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareSuccess, setShareSuccess] = useState(false);
   const user = JSON.parse(localStorage.getItem("user"));
@@ -60,7 +58,7 @@ function Post({
     });
   };
 
-  const loadMedia = async () => {
+  const loadMedia = useCallback(async () => {
     const newMediaUrls = {};
     const abortController = new AbortController();
 
@@ -119,7 +117,7 @@ function Post({
     }
 
     return () => abortController.abort();
-  };
+  }, [post.videoUrl, post.imageUrls]);
 
   const handleVideoError = async (e) => {
     console.error("Video loading error:", e);
@@ -174,7 +172,7 @@ function Post({
         }
       });
     };
-  }, [post.videoUrl, post.imageUrls]);
+  }, [post.videoUrl, post.imageUrls, loadMedia, mediaUrls]);
 
   useEffect(() => {
     if (post?.reactionCounts) {
@@ -458,7 +456,6 @@ function Post({
       
       if (newReactionType) {
         updatedCounts[newReactionType] = (updatedCounts[newReactionType] || 0) + 1;
-        setIsHoveringReaction(true);
       }
       setReactionCounts(updatedCounts);
 
@@ -496,21 +493,6 @@ function Post({
         localStorage.removeItem(`post_${post.id}_reaction`);
       }
     }
-  };
-
-  const getReactionEmoji = (type) => {
-    switch (type) {
-      case 'LIKE': return '👍';
-      case 'HEART': return '❤️';
-      default: return '👍';
-    }
-  };
-
-  const getTotalReactions = () => {
-    if (!reactionCounts || typeof reactionCounts !== 'object') {
-      return 0;
-    }
-    return Object.values(reactionCounts).reduce((sum, count) => sum + (count || 0), 0);
   };
 
   const handleShare = async (type) => {
@@ -774,7 +756,7 @@ function Post({
                   <div key={index} className="relative group">
                     <img
                       src={mediaUrls[mediaId] || getFullUrl(url)}
-                      alt={`Post image ${index + 1}`}
+                      alt={`Post content ${index + 1}`}
                       className="w-full h-full max-h-96 object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
                         const fallbackUrl = handleImageError(url);
