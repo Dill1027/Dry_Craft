@@ -82,21 +82,16 @@ npm start
 
 Frontend (.env):
 ```plaintext
-# Development environment
+# Local development environment
 REACT_APP_API_URL=http://localhost:8081
 REACT_APP_MEDIA_URL=http://localhost:8081/api/media
 REACT_APP_MAX_FILE_SIZE=15728640
-
-# Production environment (Azure)
-# These are automatically set in netlify.toml for frontend deployment
-# REACT_APP_API_URL=https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net
-# REACT_APP_MEDIA_URL=https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net/api/media
 ```
 
 Backend (application.properties):
 ```plaintext
-# Development environment
-spring.data.mongodb.uri=mongodb://localhost:27017/drycraft
+# Local development with MongoDB Atlas
+spring.data.mongodb.uri=mongodb+srv://username:password@cluster.mongodb.net/drycraft
 spring.servlet.multipart.max-file-size=15MB
 jwt.secret=your_jwt_secret_key
 upload.directory=/path/to/uploads
@@ -125,50 +120,33 @@ mvn test              # Run unit tests
 mvn verify            # Run integration tests
 ```
 
-## 📦 Deployment
+## � Local Development
 
-### Azure Deployment
-The application is deployed at:
-- Backend API: https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net
-- Frontend: Hosted on Netlify (linked to the Azure backend)
+This project is configured for **local development only**. All services run on your machine:
 
-To deploy updates:
-1. Push changes to the main branch, which will trigger the GitHub Actions workflow
-2. The workflow will build and deploy the backend to Azure
-3. Frontend will be automatically deployed through Netlify
+- **Frontend**: React development server on http://localhost:3002
+- **Backend**: Spring Boot application on http://localhost:8081  
+- **Database**: MongoDB Atlas (cloud)
 
-### Docker Deployment
+### Quick Start Commands
+
 ```bash
-# Build images
-docker-compose build
+# Setup (first time only)
+./setup-local.sh
 
-# Start services
-docker-compose up -d
-```
+# Start both frontend and backend
+./start-dev.sh
 
-### Manual Deployment
-1. Build frontend:
-```bash
-cd frontend
-npm run build
-```
-
-2. Build backend:
-```bash
-cd backend
-mvn package
-```
-
-3. Deploy the generated JAR file:
-```bash
-java -jar target/drycraft-0.0.1-SNAPSHOT.jar
+# Or start individually
+./start-backend.sh    # Spring Boot on :8081
+./start-frontend.sh   # React on :3002
 ```
 
 ## 📚 API Documentation
 
-Access the API documentation at:
-- Swagger UI: `https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net/swagger-ui.html`
-- OpenAPI Spec: `https://drycraft-gmecd2bjbxgeahfu.canadacentral-01.azurewebsites.net/v3/api-docs`
+When the backend is running locally, access the API documentation at:
+- Swagger UI: `http://localhost:8081/swagger-ui.html`
+- OpenAPI Spec: `http://localhost:8081/v3/api-docs`
 
 ## 🤝 Contributing
 

@@ -1,16 +1,16 @@
 import axios from "axios";
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:8081";
-const isProduction = API_BASE_URL.includes('vercel.app');
+const isProduction = API_BASE_URL.includes('azurewebsites.net');
 
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  withCredentials: false, // Set to false for Vercel deployment
+  withCredentials: true, // Keep for dev, but note this may need adjustment for Azure
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
-  timeout: isProduction ? 120000 : 60000, // Increased timeout for production
+  timeout: isProduction ? 120000 : 60000, // Increased timeout for Azure
 });
 
 // Add helper function to get full URL

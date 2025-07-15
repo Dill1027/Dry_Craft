@@ -15,7 +15,7 @@ export const getImageUrl = (url) => {
             return `${API_BASE_URL}${url}`;
         }
         
-        // If URL is a media ID (for Azure storage)
+        // If URL is a media ID (MongoDB ObjectId format)
         if (url.match(/^[0-9a-fA-F]{24}$/)) {
             return `${MEDIA_URL}/${url}`;
         }
@@ -34,7 +34,7 @@ export const handleImageError = (url, fallbackUrl = '/images/placeholder.jpg') =
     return fallbackUrl;
 };
 
-// Add function to determine if we're running in production environment
-export const isProductionEnvironment = () => {
-    return process.env.REACT_APP_API_URL?.includes('vercel.app') || false;
+// Add function to determine if we're running in Azure production environment
+export const isAzureEnvironment = () => {
+    return process.env.REACT_APP_API_URL?.includes('azurewebsites.net') || false;
 };
