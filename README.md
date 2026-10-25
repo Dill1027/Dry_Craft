@@ -50,7 +50,7 @@ A modern social media platform built with React, Spring Boot, and MongoDB, featu
 
 ### Prerequisites
 - Node.js (>= 16.0.0)
-- Java JDK (>= 17)
+- Java JDK (>= 25)
 - MongoDB (>= 6.0)
 - Maven (>= 3.8)
 

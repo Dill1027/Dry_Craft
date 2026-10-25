@@ -10,7 +10,14 @@ fi
 
 # Check if Java is installed
 if ! command -v java &> /dev/null; then
-    echo "❌ Java is not installed. Please install Java 17+ first."
+    echo "❌ Java is not installed. Please install Java 25+ first."
+    exit 1
+fi
+
+JAVA_VERSION=$(java -version 2>&1 | sed -n '1s/.*version "\([^"]*\)".*/\1/p')
+JAVA_MAJOR_VERSION=${JAVA_VERSION%%.*}
+if [[ ! "$JAVA_MAJOR_VERSION" =~ ^[0-9]+$ ]] || [ "$JAVA_MAJOR_VERSION" -lt 25 ]; then
+    echo "❌ Java 25 or newer is required (found ${JAVA_VERSION:-unknown})."
     exit 1
 fi
 
